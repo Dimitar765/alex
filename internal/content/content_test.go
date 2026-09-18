@@ -1,0 +1,79 @@
+package content
+
+import (
+	"strings"
+	"testing"
+	"testing/fstest"
+)
+
+const happyCards = `[
+  {"id":"phalanx","name":"Phalanx","text":"A wall.","effects":[{"kind":"stat","delta":{"army":2}}]},
+  {"id":"decreed_alliance","name":"Decreed Alliance","text":"Paper walls.","effects":[{"kind":"gain_card","cardId":"phalanx"}]}
+]`
+
+const happyScenes = `[
+  {"id":"title","text":"You stand.","choices":[{"text":"March","effects":[{"kind":"goto","next":"field"}]}]},
+  {"id":"field","text":"A field.","choices":[{"text":"Return","effects":[{"kind":"stat","delta":{"treasury":1}},{"kind":"goto","next":"title"}]}]}
+]`
+
+func fsFrom(t *testing.T, cards, scenes string) fstest.MapFS {
+	t.Helper()
+	return fstest.MapFS{
+		"cards.json":  &fstest.MapFile{Data: []byte(cards)},
+		"scenes.json": &fstest.MapFile{Data: []byte(scenes)},
+	}
+}
+
+func TestLoadValid(t *testing.T) {
+	lib, err := Load(fsFrom(t, happyCards, happyScenes))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if _, ok := lib.Cards["phalanx"]; !ok {
+		t.Fatal("phalanx card missing")
+	}
+	if _, ok := lib.Scenes["title"]; !ok {
+		t.Fatal("title scene missing")
+	}
+	list := lib.CardList()
+	if len(list) != 2 || list[0].ID != "decreed_alliance" || list[1].ID != "phalanx" {
+		t.Fatalf("CardList() = %v, want sorted by ID", list)
+	}
+}
+
+func TestLoadDanglingNext(t *testing.T) {
+	scenes := `[
+      {"id":"title","text":"You stand.","choices":[{"text":"March","effects":[{"kind":"goto","next":"nowhere"}]}]}
+    ]`
+	_, err := Load(fsFrom(t, happyCards, scenes))
+	if err == nil {
+		t.Fatal("Load() must fail on dangling goto target")
+	}
+	if !strings.Contains(err.Error(), "nowhere") {
+		t.Fatalf("error must name the dangling ID, got: %v", err)
+	}
+}
+
+func TestLoadAggregatesViolations(t *testing.T) {
+	cards := `[{"id":"x","name":"X","text":"","effects":[{"kind":"gain_card","cardId":"ghost"}]}]`
+	scenes := `[
+      {"id":"title","text":"","choices":[{"text":"A","requiresCard":"ghost2","effects":[]},{"text":"B","effects":[{"kind":"goto","next":"void"}]}]},
+      {"id":"title","text":"","choices":[]}
+    ]`
+	_, err := Load(fsFrom(t, cards, scenes))
+	if err == nil {
+		t.Fatal("Load() must fail")
+	}
+	for _, want := range []string{"ghost", "ghost2", "void", "duplicate scene id"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error missing %q, got:\n%v", want, err)
+		}
+	}
+}
+
+func TestLoadUnknownFieldsRejected(t *testing.T) {
+	cards := `[{"id":"x","name":"X","text":"","effects":[],"bogus":1}]`
+	if _, err := Load(fsFrom(t, cards, happyScenes)); err == nil {
+		t.Fatal("Load() must reject unknown JSON fields")
+	}
+}

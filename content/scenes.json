@@ -1,0 +1,67 @@
+[
+  {
+    "id": "title",
+    "text": "Pella, 336 BC. Philip is dead and the phalanx roars your name. The empire of Persia waits across the sea — but first, Macedonia must answer to a twenty-year-old king.",
+    "choices": [
+      {
+        "text": "Cross the Hellespont and seek battle at the River Granicus",
+        "effects": [{ "kind": "goto", "next": "crossing_granicus" }]
+      },
+      {
+        "text": "Ride east to Gordium, where a wagon waits with an impossible knot",
+        "effects": [{ "kind": "goto", "next": "goridiom_rock" }]
+      }
+    ]
+  },
+  {
+    "id": "crossing_granicus",
+    "text": "The River Granicus runs fast and shallow. Memnon's cavalry waits on the far bank, spears glinting in the morning light.",
+    "choices": [
+      {
+        "text": "Charge the far bank at the head of the Companions",
+        "requiresCard": "bucephalus",
+        "effects": [
+          { "kind": "stat", "delta": { "legacy": 2, "army": 1 } },
+          { "kind": "goto", "next": "goridiom_rock" }
+        ]
+      },
+      {
+        "text": "Send the phalanx across in column and grind them down",
+        "effects": [
+          { "kind": "stat", "delta": { "legacy": 1, "army": -1 } },
+          { "kind": "goto", "next": "goridiom_rock" }
+        ]
+      },
+      {
+        "text": "Withdraw and recross another day",
+        "effects": [{ "kind": "goto", "next": "title" }]
+      }
+    ]
+  },
+  {
+    "id": "goridiom_rock",
+    "text": "In Gordium, an old wagon is bound with cornel bark so tight no end can be seen. Whoever undoes the Gordian Knot, they say, will rule all of Asia.",
+    "choices": [
+      {
+        "text": "Cut the knot with a single stroke of your sword",
+        "effects": [
+          { "kind": "stat", "delta": { "legacy": 2 } },
+          { "kind": "gain_card", "cardId": "royal_decree" },
+          { "kind": "goto", "next": "title" }
+        ]
+      },
+      {
+        "text": "Probe the weave as patiently as a shield wall holds",
+        "requiresCard": "wedge_formation",
+        "effects": [
+          { "kind": "stat", "delta": { "legacy": 1, "treasury": 1 } },
+          { "kind": "goto", "next": "title" }
+        ]
+      },
+      {
+        "text": "Leave the knot hanging and ride on",
+        "effects": [{ "kind": "goto", "next": "title" }]
+      }
+    ]
+  }
+]

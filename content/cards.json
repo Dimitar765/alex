@@ -1,0 +1,38 @@
+[
+  {
+    "id": "companion_charge",
+    "name": "Companion Charge",
+    "text": "The Companions hit like a thunderbolt; the line bends and breaks.",
+    "effects": [{ "kind": "stat", "delta": { "legacy": 1, "army": 1 } }]
+  },
+  {
+    "id": "phalanx",
+    "name": "Phalanx",
+    "text": "Sarissas level; the wall of bronze advances and does not stop.",
+    "effects": [{ "kind": "stat", "delta": { "army": 2 } }]
+  },
+  {
+    "id": "siege_ladder",
+    "name": "Siege Ladder",
+    "text": "Timbers, rope, and nerve — a wall is only a door not yet opened.",
+    "effects": [{ "kind": "stat", "delta": { "army": 1, "treasury": -1 } }]
+  },
+  {
+    "id": "bucephalus",
+    "name": "Bucephalus",
+    "text": "The great black horse fears only his own shadow — and you ride him anyway.",
+    "effects": [{ "kind": "stat", "delta": { "legacy": 1 } }]
+  },
+  {
+    "id": "royal_decree",
+    "name": "Royal Decree",
+    "text": "A seal, a scribble, and the provinces remit their tribute.",
+    "effects": [{ "kind": "stat", "delta": { "treasury": 2 } }]
+  },
+  {
+    "id": "wedge_formation",
+    "name": "Wedge Formation",
+    "text": "A spearhead of horse and foot, driven where the enemy line is thinnest.",
+    "effects": [{ "kind": "stat", "delta": { "army": 1, "legacy": 1 } }]
+  }
+]
