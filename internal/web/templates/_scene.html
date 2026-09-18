@@ -1,0 +1,22 @@
+{{define "sceneInner"}}
+<p class="scene-text">{{.Scene.Text}}</p>
+<div class="stats">
+  <span>Legacy {{.Stats.Legacy}}</span>
+  <span>Army {{.Stats.Army}}</span>
+  <span>Treasury {{.Stats.Treasury}}</span>
+</div>
+<div class="choices">
+  {{range .Choices}}
+  <form hx-post="/game/action" hx-target="#scene" hx-swap="outerHTML">
+    <input type="hidden" name="choice" value="{{.Index}}">
+    <button type="submit" {{if not .Available}}disabled title="Requires {{.Requires}}"{{end}}>{{.Text}}</button>
+  </form>
+  {{end}}
+</div>
+{{end}}
+
+{{define "actionResponse"}}
+<section id="scene">{{template "sceneInner" .}}</section>
+<section id="hand" hx-swap-oob="true">{{template "handInner" .}}</section>
+<section id="log" hx-swap-oob="true">{{template "logInner" .}}</section>
+{{end}}

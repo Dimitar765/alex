@@ -1,0 +1,11 @@
+{{define "handInner"}}
+{{range .Hand}}
+<form class="card" hx-post="/game/action" hx-target="#scene" hx-swap="outerHTML">
+  <input type="hidden" name="card" value="{{.ID}}">
+  <button type="submit" class="card-btn">
+    <span class="card-name">{{.Name}}</span>
+    <span class="card-text">{{.Text}}</span>
+  </button>
+</form>
+{{end}}
+{{end}}

@@ -1,0 +1,9 @@
+{{define "content"}}
+<section id="scene" class="title-scene">
+  <h2>The Age of Alexander</h2>
+  <p class="scene-text">{{.Text}}</p>
+  <form method="post" action="/game/new">
+    <button type="submit" class="primary">Begin the campaign</button>
+  </form>
+</section>
+{{end}}

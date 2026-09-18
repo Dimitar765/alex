@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alexander — a card adventure</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body hx-boost="false">
+  <header>
+    <h1>Alexander</h1>
+    <form method="post" action="/game/new"><button type="submit">New game</button></form>
+  </header>
+  <main>
+    {{block "content" .}}{{end}}
+  </main>
+</body>
+</html>
