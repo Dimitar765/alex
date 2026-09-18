@@ -1,0 +1,3 @@
+# Runtime session saves are generated per game; keep the directory itself.
+saves/*
+!saves/.gitkeep
