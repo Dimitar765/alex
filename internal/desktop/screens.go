@@ -184,6 +184,13 @@ func (s *tableScreen) ensureCache() {
 	}
 }
 
+// ensureOff lazily allocates the offscreen shake buffer.
+func (s *tableScreen) ensureOff() {
+	if s.off == nil {
+		s.off = ebiten.NewImage(ScreenW, ScreenH)
+	}
+}
+
 func (s *tableScreen) update(g *Game) error {
 	s.stepFX(g.dt)
 	if g.back() {
@@ -280,14 +287,17 @@ func (s *tableScreen) draw(g *Game, dst *ebiten.Image) {
 	l := newLayout()
 
 	// While a shake is active, render the table into an offscreen image
-	// and blit it with a decaying offset.
+	// and blit it with a decaying offset. If the shake starts mid-frame
+	// (a click just triggered a fate effect), the flag below skips the
+	// blit for this frame — s.off is still empty — and shakes from the
+	// next one.
 	target := dst
+	shaking := false
 	if s.shakeT > 0 {
-		if s.off == nil {
-			s.off = ebiten.NewImage(ScreenW, ScreenH)
-		}
+		s.ensureOff()
 		s.off.Fill(themeBackground)
 		target = s.off
+		shaking = true
 	}
 	target.Fill(themeBackground)
 	s.drawTable(g, target, v)
@@ -362,7 +372,7 @@ func (s *tableScreen) draw(g *Game, dst *ebiten.Image) {
 		s.fxFloats[i].draw(dst, g)
 	}
 
-	if s.shakeT > 0 {
+	if shaking && s.off != nil {
 		dx := sin64(s.shakeT*44) * 5 * s.shakeT
 		dst.Fill(themeBackground)
 		opts := &ebiten.DrawImageOptions{}
