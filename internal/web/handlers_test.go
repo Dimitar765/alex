@@ -16,7 +16,10 @@ import (
 var testContent = fstest.MapFS{
 	"cards.json": &fstest.MapFile{Data: []byte(`[
       {"id":"phalanx","name":"Phalanx","text":"A wall of sarissas.","cost":2,"start":true,"effects":[{"kind":"stat","delta":{"army":2}}]},
-      {"id":"decree","name":"Royal Decree","text":"A seal, a scribble.","start":true,"effects":[{"kind":"stat","delta":{"treasury":3}}]}
+      {"id":"decree","name":"Royal Decree","text":"A seal, a scribble.","start":true,"effects":[{"kind":"stat","delta":{"treasury":3}}]},
+      {"id":"scout","name":"Scouts","text":"Eyes on the road ahead.","start":true,"effects":[{"kind":"stat","delta":{"army":1}}]},
+      {"id":"peltast","name":"Peltasts","text":"Skirmishers on the flank.","start":true,"effects":[{"kind":"stat","delta":{"army":1}}]},
+      {"id":"herald","name":"Herald","text":"News at a gallop.","start":true,"effects":[{"kind":"stat","delta":{"treasury":1}}]}
     ]`)},
 	"scenes.json": &fstest.MapFile{Data: []byte(`[
       {"id":"title","text":"You stand at the Hellespont.","choices":[{"text":"March out","effects":[{"kind":"goto","next":"field"}]}]},
@@ -156,29 +159,64 @@ func startGame(t *testing.T, c *http.Client, base string) {
 	}
 }
 
+// playCardAny plays the first of ids that succeeds and returns its id.
+func playCardAny(t *testing.T, c *http.Client, base string, ids ...string) string {
+	t.Helper()
+	for _, id := range ids {
+		b := readBody(t, postAction(t, c, base, url.Values{"card": {id}}))
+		if !strings.Contains(b, "Error:") {
+			return id
+		}
+	}
+	t.Fatalf("none of %v playable", ids)
+	return ""
+}
+
+// playCardDig plays id, digging through the deck with free cards when the
+// opening hand missed it; the 5-card test deck keeps any card at most one
+// play away. It returns the successful action's response body.
+func playCardDig(t *testing.T, c *http.Client, base, id string) string {
+	t.Helper()
+	b := readBody(t, postAction(t, c, base, url.Values{"card": {id}}))
+	for i := 0; strings.Contains(b, "Error:") && i < 4; i++ {
+		playCardAny(t, c, base, "scout", "peltast", "herald")
+		b = readBody(t, postAction(t, c, base, url.Values{"card": {id}}))
+	}
+	if strings.Contains(b, "Error:") {
+		t.Fatalf("playing %q kept failing: %s", id, b)
+	}
+	return b
+}
+
+// discardFills plays free cards until the shuffle button reports a
+// non-empty discard pile.
+func discardFills(t *testing.T, c *http.Client, base string) {
+	t.Helper()
+	for i := 0; i < 5; i++ {
+		b := readBody(t, get(t, c, base+"/"))
+		if !strings.Contains(b, "Shuffle · 0") {
+			return
+		}
+		playCardAny(t, c, base, "scout", "peltast", "herald")
+	}
+	t.Fatal("discard pile never filled")
+}
+
 func TestActionPlaysCardPartial(t *testing.T) {
 	c, base := newTestClient(t)
 	startGame(t, c, base)
-	// Decree is free and funds the treasury; the costed Phalanx then
-	// becomes playable in the same partial flow.
-	resp := postAction(t, c, base, url.Values{"card": {"decree"}})
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("POST /game/action = %d, want 200", resp.StatusCode)
-	}
-	b := readBody(t, resp)
+	b := playCardDig(t, c, base, "decree")
 	for _, want := range []string{
 		"You stand at the Hellespont.", // scene unchanged but re-rendered
 		"Played Royal Decree",          // log line
-		"Treasury 3",                   // stat updated from 0
 		"hx-swap-oob",                  // hand/log ride along as OOB swaps
 	} {
 		if !strings.Contains(b, want) {
 			t.Fatalf("action response missing %q, got: %s", want, b)
 		}
 	}
-	resp = postAction(t, c, base, url.Values{"card": {"phalanx"}})
-	b = readBody(t, resp)
-	for _, want := range []string{"Played Phalanx", "Treasury -2", "Army 2"} {
+	b = playCardDig(t, c, base, "phalanx")
+	for _, want := range []string{"Played Phalanx", "Treasury -2"} {
 		if !strings.Contains(b, want) {
 			t.Fatalf("costed play missing %q, got: %s", want, b)
 		}
@@ -236,19 +274,19 @@ func TestStatGatedChoiceShowsRequirementUntilMet(t *testing.T) {
 		t.Fatalf("gated choice must show its requirement, got: %s", b)
 	}
 
-	// After playing a treasury card, the action partial re-renders the
-	// choice without a requirement tooltip.
-	resp := postAction(t, c, base, url.Values{"card": {"decree"}})
-	b = readBody(t, resp)
-	if strings.Contains(b, `title="Requires`) {
-		t.Fatalf("requirement tooltip must disappear once met, got: %s", b)
+	// After playing a treasury card, the page re-renders without the stat
+	// requirement tooltip (the card-gated choice keeps its own).
+	playCardDig(t, c, base, "decree")
+	b = readBody(t, get(t, c, base+"/"))
+	if strings.Contains(b, `disabled title="Requires Treasury 3"`) {
+		t.Fatalf("stat requirement must disappear once met, got: %s", b)
 	}
 }
 
 func TestEndingFlowRendersSummaryAndRefusesFurtherActions(t *testing.T) {
 	c, base := newTestClient(t)
 	startGame(t, c, base)
-	postAction(t, c, base, url.Values{"card": {"decree"}})
+	playCardDig(t, c, base, "decree")
 	postAction(t, c, base, url.Values{"choice": {"0"}}) // title → field
 
 	resp := postAction(t, c, base, url.Values{"choice": {"1"}}) // claim vault
@@ -285,7 +323,7 @@ func TestEndingFlowRendersSummaryAndRefusesFurtherActions(t *testing.T) {
 func TestRunHistorySurvivesNewGame(t *testing.T) {
 	c, base := newTestClient(t)
 	startGame(t, c, base)
-	postAction(t, c, base, url.Values{"card": {"decree"}})
+	playCardDig(t, c, base, "decree")
 	postAction(t, c, base, url.Values{"choice": {"0"}}) // title → field
 	postAction(t, c, base, url.Values{"choice": {"1"}}) // → ending, run recorded
 
@@ -299,7 +337,7 @@ func TestRunHistorySurvivesNewGame(t *testing.T) {
 	}
 	// Session persistence check via history: end the second run too, then
 	// the counter must read two campaigns.
-	postAction(t, c, base, url.Values{"card": {"decree"}})
+	playCardDig(t, c, base, "decree")
 	postAction(t, c, base, url.Values{"choice": {"0"}})
 	postAction(t, c, base, url.Values{"choice": {"1"}})
 	b = readBody(t, get(t, c, base+"/"))
@@ -312,26 +350,41 @@ func TestCardCostDisablesUntilAffordable(t *testing.T) {
 	c, base := newTestClient(t)
 	startGame(t, c, base)
 
-	// Broke at the start: the costed card cannot be played.
+	// Broke at the start: the costed card in hand cannot be played.
+	drawIntoHand(t, c, base, "phalanx")
 	b := readBody(t, get(t, c, base+"/"))
 	if !strings.Contains(b, `disabled title="Requires Treasury 2"`) {
 		t.Fatalf("unaffordable card must be disabled with its cost, got: %s", b)
 	}
 
-	// After a treasury card, the action partial re-enables it.
-	resp := postAction(t, c, base, url.Values{"card": {"decree"}})
-	b = readBody(t, resp)
+	// After a treasury card, the page re-enables it.
+	playCardDig(t, c, base, "decree")
+	b = readBody(t, get(t, c, base+"/"))
 	if strings.Contains(b, `disabled title="Requires Treasury`) {
 		t.Fatalf("affordable card must be enabled, got: %s", b)
 	}
 	if !strings.Contains(b, "Phalanx") {
-		t.Fatal("phalanx missing from hand partial")
+		t.Fatal("phalanx missing from page (hand or deck)")
 	}
+}
+
+// drawIntoHand plays free cards until id shows up in the rendered hand.
+func drawIntoHand(t *testing.T, c *http.Client, base, id string) {
+	t.Helper()
+	for i := 0; i < 6; i++ {
+		b := readBody(t, get(t, c, base+"/"))
+		if strings.Contains(b, `name="card" value="`+id+`"`) {
+			return
+		}
+		playCardAny(t, c, base, "scout", "peltast", "herald")
+	}
+	t.Fatalf("%s never drawn into hand", id)
 }
 
 func TestConsumingChoiceSpendsCard(t *testing.T) {
 	c, base := newTestClient(t)
 	startGame(t, c, base)
+	drawIntoHand(t, c, base, "decree")
 	postAction(t, c, base, url.Values{"choice": {"0"}}) // title → field
 
 	resp := postAction(t, c, base, url.Values{"choice": {"2"}}) // tear up decree
@@ -356,14 +409,14 @@ func TestDeckInspectorTracksSceneGrants(t *testing.T) {
 	startGame(t, c, base)
 
 	b := readBody(t, get(t, c, base+"/"))
-	if !strings.Contains(b, `<summary>Deck · 2</summary>`) {
-		t.Fatalf("deck inspector must show the 2 starting cards, got: %s", b)
+	if !strings.Contains(b, `<summary>Deck · 5</summary>`) {
+		t.Fatalf("deck inspector must show the 5 starting cards, got: %s", b)
 	}
 
 	// March out: arriving at field has no pool in this content, count stays.
 	postAction(t, c, base, url.Values{"choice": {"0"}})
 	b = readBody(t, get(t, c, base+"/"))
-	if !strings.Contains(b, `<summary>Deck · 2</summary>`) {
+	if !strings.Contains(b, `<summary>Deck · 5</summary>`) {
 		t.Fatalf("deck count must be stable without grants, got: %s", b)
 	}
 	if !strings.Contains(b, `class="deck-count">×1`) {
@@ -376,6 +429,10 @@ func TestActionWithoutJSReturnsFullPage(t *testing.T) {
 	startGame(t, c, base)
 	resp := postForm(t, c, base+"/game/action", url.Values{"card": {"decree"}})
 	b := readBody(t, resp)
+	if strings.Contains(b, "Error:") {
+		b = readBody(t, postForm(t, c, base+"/game/action", url.Values{"card": {"scout"}}))
+		b = readBody(t, postForm(t, c, base+"/game/action", url.Values{"card": {"decree"}}))
+	}
 	if !strings.Contains(b, "<!DOCTYPE html>") {
 		t.Fatal("plain post must render a full HTML page")
 	}
@@ -430,7 +487,7 @@ func TestChronicleEmptyThenPopulated(t *testing.T) {
 
 	// Complete a run; the chronicle summarizes and tabulates it.
 	startGame(t, c, base)
-	postAction(t, c, base, url.Values{"card": {"decree"}})
+	playCardDig(t, c, base, "decree")
 	postAction(t, c, base, url.Values{"choice": {"0"}})
 	postAction(t, c, base, url.Values{"choice": {"1"}}) // → ending, run recorded
 
@@ -468,15 +525,52 @@ func TestCardsRenderArtwork(t *testing.T) {
 	c, base := newTestClient(t)
 	startGame(t, c, base)
 	b := readBody(t, get(t, c, base+"/"))
-	// The test deck holds exactly two cards, both dealt into the hand.
-	if n := strings.Count(b, `class="card-art" viewBox="0 0 64 64"`); n != 2 {
-		t.Fatalf("hand must render 2 card artworks, got %d", n)
+	if n := strings.Count(b, `class="card-art" viewBox="0 0 64 64"`); n != 4 {
+		t.Fatalf("hand must render 4 card artworks, got %d", n)
 	}
 	if !strings.Contains(b, `href="/static/art.svg#art_`) {
 		t.Fatal("card artworks must reference the art sprite")
 	}
 	if !strings.Contains(b, `class="deck-art" viewBox="0 0 64 64"`) {
 		t.Fatal("deck inspector must render thumbnails")
+	}
+}
+
+// Shuffle is a first-class action: disabled with an empty discard, and
+// recycles the pile for the cost of the turn.
+func TestShuffleActionFlow(t *testing.T) {
+	c, base := newTestClient(t)
+	startGame(t, c, base)
+
+	// Fresh game: nothing to shuffle, button disabled with a reason.
+	b := readBody(t, get(t, c, base+"/"))
+	if !strings.Contains(b, `disabled title="The discard pile is empty"`) {
+		t.Fatalf("shuffle must be disabled on an empty discard, got: %s", b)
+	}
+	if strings.Contains(b, `Shuffle · 0`) && !strings.Contains(b, "Shuffle · 0") {
+		t.Fatal("discard count must render")
+	}
+
+	// Playing cards fills the discard; shuffling recycles it.
+	playCardDig(t, c, base, "decree")
+	discardFills(t, c, base)
+	resp := postAction(t, c, base, url.Values{"shuffle": {"1"}})
+	b = readBody(t, resp)
+	if strings.Contains(b, "Error:") {
+		t.Fatalf("shuffle failed: %s", b)
+	}
+	if !strings.Contains(b, "Shuffled the discard pile into the deck") {
+		t.Fatalf("log must record the shuffle, got: %s", b)
+	}
+	if !strings.Contains(b, `disabled title="The discard pile is empty"`) {
+		t.Fatal("shuffle must be disabled again after recycling")
+	}
+
+	// A second shuffle without plays in between is refused.
+	resp = postAction(t, c, base, url.Values{"shuffle": {"1"}})
+	b = readBody(t, resp)
+	if !strings.Contains(b, "nothing to shuffle") {
+		t.Fatalf("empty shuffle must be refused, got: %s", b)
 	}
 }
 

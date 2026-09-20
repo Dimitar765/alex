@@ -43,6 +43,41 @@ func TestNewStateDealsOpeningHand(t *testing.T) {
 	}
 }
 
+func TestShuffleRecyclesDiscardAndSpendsTurn(t *testing.T) {
+	lib := testLib()
+	s := &State{SceneID: "x", Hand: []string{"a"}, Deck: []string{"b"}, Discard: []string{"c", "d"}}
+	turns := s.Turns
+	if err := s.Shuffle(); err != nil {
+		t.Fatalf("Shuffle() error = %v", err)
+	}
+	if s.Turns != turns+1 || s.CardsPlayed != 0 {
+		t.Fatalf("shuffle must spend the turn without counting a card play: %+v", s)
+	}
+	if len(s.Discard) != 0 || len(s.Deck) != 3 { // b + recycled c, d
+		t.Fatalf("discard must recycle into the deck: deck=%v discard=%v", s.Deck, s.Discard)
+	}
+	all := append(slices.Clone(s.Deck), s.Hand...)
+	slices.Sort(all)
+	if !slices.Equal(all, []string{"a", "b", "c", "d"}) {
+		t.Fatalf("cards must be conserved: %v", all)
+	}
+	if !strings.Contains(strings.Join(s.Log, " | "), "Shuffled the discard") {
+		t.Fatalf("log must record the shuffle, got %v", s.Log)
+	}
+	_ = lib
+}
+
+func TestShuffleEmptyDiscardRefused(t *testing.T) {
+	s := &State{SceneID: "x", Hand: []string{"a"}, Deck: []string{"b"}}
+	err := s.Shuffle()
+	if err == nil || !strings.Contains(err.Error(), "nothing to shuffle") {
+		t.Fatalf("Shuffle() error = %v, want refusal", err)
+	}
+	if s.Turns != 0 || len(s.Deck) != 1 {
+		t.Fatalf("refused shuffle must not mutate state: %+v", s)
+	}
+}
+
 func TestActionCounters(t *testing.T) {
 	lib := testLib()
 	s := &State{SceneID: "x", Hand: []string{"a"}, Deck: []string{"b", "c", "d", "e"}}

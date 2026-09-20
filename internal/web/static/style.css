@@ -342,6 +342,31 @@ button.primary { padding: 0.65rem 1.2rem; }
 
 #deck { margin-top: -0.75rem; }
 
+.deck-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.deck-row .deck { flex: 1; min-width: 0; }
+
+.shuffle-btn {
+  font-size: 0.8rem;
+  padding: 0.35rem 0.7rem;
+  white-space: nowrap;
+}
+
+/* The deck panel shakes when it is reshuffled. */
+#deck.htmx-settling .deck-row { animation: shuffle-shake 0.45s ease-out; }
+
+@keyframes shuffle-shake {
+  15% { transform: translateX(-5px) rotate(-1.2deg); }
+  30% { transform: translateX(4px) rotate(1deg); }
+  45% { transform: translateX(-3px) rotate(-0.8deg); }
+  60% { transform: translateX(2px) rotate(0.5deg); }
+  75% { transform: translateX(-1px); }
+}
+
 .deck {
   color: var(--muted);
   font-size: 0.9rem;
@@ -406,7 +431,8 @@ button.primary { padding: 0.65rem 1.2rem; }
   .card,
   .card-played,
   .ending .ending-badge,
-  .ending form {
+  .ending form,
+  #deck.htmx-settling .deck-row {
     animation: none !important;
     transition: none !important;
   }

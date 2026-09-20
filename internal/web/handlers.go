@@ -59,6 +59,7 @@ type view struct {
 	Endings     []endingTile
 	Deck        []deckEntry
 	DeckTotal   int
+	DiscardN    int
 }
 
 // titleView is the template data for the title page.
@@ -158,6 +159,8 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request, session string) 
 			return st.PlayCard(r.FormValue("card"), s.store.lib)
 		case r.FormValue("choice") != "":
 			return s.applyChoice(st, r.FormValue("choice"))
+		case r.FormValue("shuffle") != "":
+			return st.Shuffle()
 		default:
 			return errors.New("no card or choice selected")
 		}
@@ -222,6 +225,7 @@ func (s *Server) buildView(st *game.State, err error) view {
 		v.Deck = append(v.Deck, deckEntry{ID: id, Name: name, Count: counts[id]})
 		v.DeckTotal += counts[id]
 	}
+	v.DiscardN = len(st.Discard)
 
 	log := slices.Clone(st.Log)
 	if err != nil {

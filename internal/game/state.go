@@ -3,6 +3,7 @@
 package game
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"math/rand/v2"
@@ -157,6 +158,20 @@ func (s *State) CanPlay(id string, cards map[string]content.Card) bool {
 		return false
 	}
 	return s.Stats.Treasury >= cards[id].Cost
+}
+
+// Shuffle spends the turn recycling the discard pile into the deck. It
+// fails when there is nothing to shuffle.
+func (s *State) Shuffle() error {
+	if len(s.Discard) == 0 {
+		return errors.New("nothing to shuffle — the discard pile is empty")
+	}
+	s.Deck = append(s.Deck, s.Discard...)
+	s.Discard = nil
+	s.shuffle(len(s.Deck), func(i, j int) { s.Deck[i], s.Deck[j] = s.Deck[j], s.Deck[i] })
+	s.Turns++
+	s.appendLog("Shuffled the discard pile into the deck")
+	return nil
 }
 
 // arrive grants the entered scene's regional card pool on first entry,

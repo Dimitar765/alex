@@ -1,8 +1,18 @@
 {{define "deckInner"}}
-<details class="deck">
-  <summary>Deck · {{.DeckTotal}}</summary>
-  <ul class="deck-list">
-    {{range .Deck}}<li><span class="deck-item"><svg class="deck-art" viewBox="0 0 64 64" aria-hidden="true"><use href="/static/art.svg#art_{{.ID}}"/></svg><span class="deck-name">{{.Name}}</span></span><span class="deck-count">×{{.Count}}</span></li>{{end}}
-  </ul>
-</details>
+<div class="deck-row">
+  <details class="deck">
+    <summary>Deck · {{.DeckTotal}}</summary>
+    <ul class="deck-list">
+      {{range .Deck}}<li><span class="deck-item"><svg class="deck-art" viewBox="0 0 64 64" aria-hidden="true"><use href="/static/art.svg#art_{{.ID}}"/></svg><span class="deck-name">{{.Name}}</span></span><span class="deck-count">×{{.Count}}</span></li>{{end}}
+    </ul>
+  </details>
+  {{if not .Scene.Ending}}
+  <form class="shuffle-form" method="post" action="/game/action" hx-post="/game/action" hx-target="#scene" hx-swap="outerHTML swap:120ms settle:400ms">
+    <input type="hidden" name="shuffle" value="1">
+    <button type="submit" class="shuffle-btn" {{if eq .DiscardN 0}}disabled title="The discard pile is empty"{{end}} title="Recycle the discard pile into the deck — spends your turn">
+      Shuffle · {{.DiscardN}}
+    </button>
+  </form>
+  {{end}}
+</div>
 {{end}}

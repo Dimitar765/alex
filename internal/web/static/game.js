@@ -98,6 +98,10 @@
           tone(392, 0.06, { type: "triangle", gain: 0.06 });
           setTimeout(function () { tone(523, 0.09, { type: "triangle", gain: 0.05 }); }, 55);
           break;
+        case "shuffle":
+          noise(0.12, 900);
+          setTimeout(function () { noise(0.12, 1200); }, 90);
+          break;
         case "error":
           tone(147, 0.22, { type: "sawtooth", gain: 0.05, slideTo: 98 });
           break;
@@ -120,12 +124,12 @@
     }
   };
 
-  // Choice takes: soft two-note tick.
+  // Choice takes: soft two-note tick; the shuffle gets a double swish.
   document.addEventListener("submit", function (e) {
     var form = e.target;
     if (!form.classList || form.classList.contains("card")) return;
     if (form.action && form.action.indexOf("/game/action") !== -1) {
-      sfx.play("choice");
+      sfx.play(form.classList.contains("shuffle-form") ? "shuffle" : "choice");
     }
   });
 
