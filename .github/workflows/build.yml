@@ -49,3 +49,51 @@ jobs:
         with:
           name: alexander-${{ matrix.os }}
           path: dist/
+
+  ebitengine:
+    name: ebitengine (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # Pure Go, no system dependencies: any runner works.
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build native client
+        run: go build -trimpath -ldflags "-s -w" -v ./cmd/alexander-ebitengine
+      - name: Stage artifact
+        shell: bash
+        run: |
+          mkdir -p dist
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            mv alexander-ebitengine.exe dist/
+          else
+            mv alexander-ebitengine dist/
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alexander-ebitengine-${{ matrix.os }}
+          path: dist/
+
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build WASM client
+        run: GOOS=js GOARCH=wasm go build -trimpath -ldflags "-s -w" -o alexander.wasm ./cmd/alexander-ebitengine
+      - name: Stage artifact
+        run: |
+          mkdir -p dist
+          mv alexander.wasm dist/
+          cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alexander-wasm
+          path: dist/
