@@ -81,6 +81,9 @@ func (g *Game) Update() error {
 	if g.keysPressed[ebiten.KeyM] {
 		g.audio.muted = !g.audio.muted
 	}
+	if g.keysPressed[ebiten.KeyF] {
+		reducedMotion = !reducedMotion
+	}
 	if len(g.stack) == 0 {
 		return ebiten.Termination
 	}

@@ -146,6 +146,12 @@ func (s *titleScreen) draw(g *Game, dst *ebiten.Image) {
 		drawTextAligned(dst, label, g.theme.Face(faceHintSmall),
 			x0+float64(i)*72, y0, 60, 28, themeMuted, text.AlignCenter)
 	}
+
+	hints := "M mute · F reduced motion"
+	if g.audio.muted {
+		hints = "M unmute · F reduced motion"
+	}
+	drawText(dst, hints, g.theme.Face(faceHintSmall), 52, ScreenH-40, themeMuted)
 }
 
 // tableScreen is the main play view: card fan left, scene and log right.
@@ -643,16 +649,41 @@ func (chronicleScreen) update(g *Game) error {
 func (chronicleScreen) draw(g *Game, dst *ebiten.Image) {
 	dst.Fill(themeBackground)
 	drawText(dst, "Chronicle", g.theme.DisplayFace(faceHeader), 48, 40, themeGold)
+	drawText(dst, "Esc — back to the table", g.theme.Face(faceHintSmall), 52, 92, themeMuted)
+
 	c := g.model.StatsPage()
 	if len(c.Runs) == 0 {
-		drawText(dst, "No campaigns recorded yet.", g.theme.Face(faceBody), 52, 120, themeMuted)
+		drawText(dst, "No campaigns recorded yet.", g.theme.Face(faceBody), 52, 140, themeMuted)
 		return
 	}
-	y := 120.0
+
+	// Ending breakdown and averages.
+	x := 52.0
+	for _, e := range c.Endings {
+		drawText(dst, fmt.Sprintf("%s ×%d", e.Class, e.Count), g.theme.Face(faceBody), x, 140, themeGold)
+		x += 130
+	}
+	drawText(dst, fmt.Sprintf("avg turns %.1f · avg cards %.1f", c.AvgTurns, c.AvgCards),
+		g.theme.Face(faceSmall), 52, 168, themeMuted)
+	if c.Best != nil {
+		drawText(dst, fmt.Sprintf("best legacy %d", c.Best.Stats.Legacy),
+			g.theme.Face(faceSmall), 52, 190, themeGold)
+	}
+
+	// Run list, newest first.
+	y := 232.0
+	drawText(dst, "ENDING     LEGACY  TURNS  CARDS  DATE", g.theme.Face(faceSmall), 52, y, themeMuted)
+	y += 26
 	for i, run := range c.Runs {
-		drawText(dst, fmt.Sprintf("%d. %s — legacy %d, %d turns",
-			len(c.Runs)-i, run.Ending, run.Stats.Legacy, run.Turns),
+		if y > ScreenH-60 {
+			drawText(dst, fmt.Sprintf("… and %d earlier runs", len(c.Runs)-i),
+				g.theme.Face(faceSmall), 52, y, themeMuted)
+			break
+		}
+		drawText(dst, fmt.Sprintf("%-10s %5d   %5d  %5d  %s",
+			run.Ending, run.Stats.Legacy, run.Turns, run.CardsPlayed,
+			run.Date.Format("2006-01-02")),
 			g.theme.Face(faceBody), 52, y, themeInk)
-		y += 28
+		y += 26
 	}
 }
