@@ -99,8 +99,15 @@ on the shipped campaign.
 
 ## Presentation
 
-The card table look is pure CSS + SVG + a dash of vanilla JS:
+The card table look is CSS + SVG + vanilla JS, topped with a WebGL hand:
 
+- **3D hand** (`hand3d.js`, three.js r147 vendored): the hand renders as
+  WebGL card meshes — fronts painted from the SVG emblems with name,
+  flavor, and cost, meander-pattern backs — fanned on a lit table with a
+  deck stack, staggered deal-ins, hover lift via raycasting, play arcs
+  toward the scene, a shuffle riffle, and a scout deck-pulse. The
+  server-rendered DOM hand stays as the data source, keyboard/gamepad
+  focus target, and the automatic fallback when WebGL is unavailable.
 - **Artwork**: every card has a hand-drawn line-art emblem
   (`internal/web/static/art.svg`, a `<symbol>` sprite in pottery-style
   gold, referenced via `<use>`); the deck inspector shows thumbnails.
@@ -119,7 +126,8 @@ The card table look is pure CSS + SVG + a dash of vanilla JS:
   with a header toggle persisted in `localStorage`.
 
 Everything degrades: without JavaScript the game plays natively over
-plain form posts, just without sound and motion.
+plain form posts; without WebGL the DOM hand renders instead of the 3D
+one.
 
 ## Saves
 

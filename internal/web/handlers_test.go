@@ -518,6 +518,8 @@ func TestLayoutLoadsEnhancementScripts(t *testing.T) {
 		`src="/static/game.js"`,
 		`src="/static/fx.js"`,
 		`src="/static/pad.js"`,
+		`src="/static/three.min.js"`,
+		`src="/static/hand3d.js"`,
 		`id="sfx-toggle"`,
 		`id="fx-toggle"`,
 		`href="/static/art.svg#icon-sound"`,

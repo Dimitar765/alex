@@ -76,6 +76,30 @@ main {
   min-width: 0;
 }
 
+/* --- 3D hand (hand3d.js): DOM hand becomes data + fallback ------------- */
+.table-side.hand-3d-host { position: sticky; }
+
+.table-side.hand-3d-host #hand {
+  position: relative;
+  height: 21rem;
+  display: block;
+}
+
+.table-side.hand-3d-host #hand .card {
+  position: absolute;
+  left: -9999px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hand-3d-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  border-radius: 8px;
+}
+
 @media (max-width: 55rem) {
   .board { grid-template-columns: 1fr; }
   .table-side { order: 2; position: static; }

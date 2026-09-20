@@ -1,7 +1,7 @@
 {{define "content"}}
 <div class="board">
   <aside class="table-side">
-    <section id="hand" class="hand">{{template "handInner" .}}</section>
+    <section id="hand" class="hand" data-deck="{{.DeckN}}">{{template "handInner" .}}</section>
     <section id="deck">{{template "deckInner" .}}</section>
   </aside>
   <div class="play-side">

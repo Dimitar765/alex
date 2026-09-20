@@ -248,7 +248,7 @@
   document.body.addEventListener("htmx:confirm", function (e) {
     var elt = e.detail.elt;
     var card = elt && elt.closest ? elt.closest(".card") : null;
-    if (card && ok()) { trail(card); }
+    if (card && ok() && !document.querySelector(".hand-3d-host")) { trail(card); }
   });
 
   document.body.addEventListener("htmx:beforeSwap", function () {
