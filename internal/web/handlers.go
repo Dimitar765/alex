@@ -41,6 +41,7 @@ type endingTile struct {
 
 // deckEntry is one card line in the deck inspector.
 type deckEntry struct {
+	ID    string
 	Name  string
 	Count int
 }
@@ -218,7 +219,7 @@ func (s *Server) buildView(st *game.State, err error) view {
 		if c, ok := s.store.lib.Cards[id]; ok && c.Name != "" {
 			name = c.Name
 		}
-		v.Deck = append(v.Deck, deckEntry{Name: name, Count: counts[id]})
+		v.Deck = append(v.Deck, deckEntry{ID: id, Name: name, Count: counts[id]})
 		v.DeckTotal += counts[id]
 	}
 

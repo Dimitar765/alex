@@ -2,7 +2,7 @@
 <details class="deck">
   <summary>Deck · {{.DeckTotal}}</summary>
   <ul class="deck-list">
-    {{range .Deck}}<li><span class="deck-name">{{.Name}}</span><span class="deck-count">×{{.Count}}</span></li>{{end}}
+    {{range .Deck}}<li><span class="deck-item"><svg class="deck-art" viewBox="0 0 64 64" aria-hidden="true"><use href="/static/art.svg#art_{{.ID}}"/></svg><span class="deck-name">{{.Name}}</span></span><span class="deck-count">×{{.Count}}</span></li>{{end}}
   </ul>
 </details>
 {{end}}

@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <!-- Shared card emblems: gold line-art, 64x64 grid, stroke-based so they
+       inherit currentColor. Referenced via <use href="/static/art.svg#id">. -->
+  <defs>
+    <g id="stroke-style" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </defs>
+
+  <symbol id="art_companion_charge" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M16 50 L48 14"/>
+      <path d="M48 14 l-8 2 M48 14 l-2 8"/>
+      <path d="M48 50 L16 14"/>
+      <path d="M16 14 l8 2 M16 14 l2 8"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_phalanx" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 52 L26 12 M22 54 L38 14 M34 54 L50 14 M44 54 L58 22"/>
+      <circle cx="27" cy="36" r="11"/>
+      <circle cx="27" cy="36" r="3"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_wedge_formation" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M50 32 L14 14 M50 32 L14 50"/>
+      <path d="M42 32 L14 22 M42 32 L14 42"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_hypaspists" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="32" cy="32" r="18"/>
+      <circle cx="32" cy="32" r="5"/>
+      <path d="M32 16 v5 M32 48 v-5 M16 32 h5 M48 32 h-5"/>
+      <path d="M20.7 20.7 l3.5 3.5 M43.3 20.7 l-3.5 3.5 M20.7 43.3 l3.5 -3.5 M43.3 43.3 l-3.5 -3.5"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_agrianians" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 52 L50 12"/>
+      <path d="M50 12 l-8 1 M50 12 l-1 8"/>
+      <circle cx="30" cy="36" r="6"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_bucephalus" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 52 C22 34 26 24 34 19 L47 12 L44 24 C40 28 35 28 32 27 C27 36 27 44 29 52"/>
+      <path d="M30 18 L28 11 M35 14 L34 8"/>
+      <circle cx="39" cy="19" r="1.4" fill="currentColor" stroke="none"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_royal_decree" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 22 H45 V42 H19 Z"/>
+      <circle cx="15" cy="32" r="4.5"/>
+      <circle cx="49" cy="32" r="4.5"/>
+      <path d="M25 29 H39 M25 35 H35"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_greek_mercenaries" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 46 V30 A14 14 0 0 1 46 30 V46"/>
+      <path d="M32 44 V27 M32 27 L24 22 M32 27 L40 22"/>
+      <path d="M14 26 Q32 5 50 26"/>
+      <path d="M21 17 L17 11 M31 11 L29 5 M41 12 L43 6"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_scythian_horse" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 12 C44 22 44 42 20 52"/>
+      <path d="M20 12 L20 52"/>
+      <path d="M20 32 H52"/>
+      <path d="M52 32 l-7 -4 M52 32 l-7 4"/>
+      <path d="M24 32 l4 -3 M24 32 l4 3"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_persian_ransom" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M24 12 H40 M26 14 H38"/>
+      <path d="M26 14 C18 22 16 34 22 44 C26 50 38 50 42 44 C48 34 46 22 38 14"/>
+      <path d="M26 18 C20 18 18 26 24 28 M38 18 C44 18 46 26 40 28"/>
+      <path d="M28 50 H36 M26 54 H38"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_siege_ladder" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 10 V54 M42 10 V54"/>
+      <path d="M22 17 H42 M22 27 H42 M22 37 H42 M22 47 H42"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_nile_grain" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M32 56 V16 M32 16 l0 -6"/>
+      <path d="M32 22 C38 18 40 13 36 9 M32 22 C26 18 24 13 28 9"/>
+      <path d="M32 31 C38 27 41 23 37 19 M32 31 C26 27 23 23 27 19"/>
+      <path d="M32 40 C38 36 41 32 37 28 M32 40 C26 36 23 32 27 28"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_parmenion_wing" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 46 C24 20 44 10 56 12"/>
+      <path d="M12 46 C26 26 46 20 56 24"/>
+      <path d="M12 46 C30 32 48 30 56 36"/>
+      <circle cx="13" cy="46" r="3"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_royal_road" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M26 12 H38 L54 52 H10 Z"/>
+      <path d="M32 17 V49" stroke-dasharray="4 5"/>
+      <path d="M21 26 h-4 M43 26 h4"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_war_chest" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 28 H52 V52 H12 Z"/>
+      <path d="M12 28 C12 17 52 17 52 28"/>
+      <path d="M20 28 V52 M44 28 V52"/>
+      <path d="M29 33 H35 V41 H29 Z"/>
+      <circle cx="32" cy="36.5" r="1" fill="currentColor" stroke="none"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_sogdian_rock" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 54 L24 18 L34 34 L44 22 L58 54 Z"/>
+      <path d="M44 22 V8"/>
+      <path d="M44 8 L56 12 L44 16"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_siwa_oracle" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="32" cy="30" r="9"/>
+      <path d="M32 15 v-4 M32 45 v4 M17 30 h-4 M47 30 h4"/>
+      <path d="M21 19 l-3 -3 M43 19 l3 -3 M21 41 l-3 3 M43 41 l3 3"/>
+      <path d="M24 44 C16 44 13 52 21 55 M40 44 C48 44 51 52 43 55"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_nearchus_fleet" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 36 C16 46 48 46 56 36 L50 30 C40 38 24 38 14 30 Z"/>
+      <path d="M56 36 L61 32"/>
+      <path d="M32 30 V10"/>
+      <path d="M32 12 Q46 20 42 30"/>
+      <path d="M14 42 L10 49 M26 44 L24 51 M38 44 L40 51 M50 42 L54 49"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_roxane" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="25" cy="34" r="10"/>
+      <circle cx="39" cy="34" r="10"/>
+      <path d="M25 20 L29 24 L25 28 L21 24 Z"/>
+    </g>
+  </symbol>
+
+  <symbol id="art_elephant_corps" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 40 C16 18 36 10 46 18 C54 24 54 34 48 38"/>
+      <path d="M48 38 C52 46 50 54 42 56"/>
+      <path d="M30 20 C24 26 24 34 28 38"/>
+      <path d="M44 38 L51 45"/>
+      <circle cx="42" cy="25" r="1.4" fill="currentColor" stroke="none"/>
+    </g>
+  </symbol>
+
+  <symbol id="icon-sound" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 25 H18 L28 15 V49 L18 39 H10 Z"/>
+      <path d="M36 25 C42 29 42 35 36 39"/>
+      <path d="M40 19 C50 27 50 37 40 45"/>
+    </g>
+  </symbol>
+
+  <symbol id="icon-muted" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 25 H18 L28 15 V49 L18 39 H10 Z"/>
+      <path d="M37 25 L52 40 M52 25 L37 40"/>
+    </g>
+  </symbol>
+</svg>

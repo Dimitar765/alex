@@ -188,6 +188,28 @@ button.primary { padding: 0.65rem 1.2rem; }
   border-radius: 8px;
   margin: 0;
   padding: 0;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.card:hover:has(.card-btn:not(:disabled)) {
+  transform: translateY(-6px) rotate(-0.6deg);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45);
+}
+
+.card-art-wrap {
+  display: block;
+  margin: -0.75rem -0.75rem 0.4rem;
+  padding: 0.7rem 0.7rem 0.5rem;
+  background: radial-gradient(120% 90% at 50% 0%, #25201a 0%, #17130f 100%);
+  border-bottom: 1px solid var(--line);
+  border-radius: 8px 8px 0 0;
+}
+
+.card-art {
+  display: block;
+  width: 100%;
+  height: 64px;
+  color: var(--gold);
 }
 
 .card-btn {
@@ -218,6 +240,98 @@ button.primary { padding: 0.65rem 1.2rem; }
   font-family: ui-monospace, Menlo, monospace;
 }
 .card-text { color: var(--muted); font-size: 0.85rem; }
+
+/* --- Card table animation ---------------------------------------------- */
+
+/* New hand deals in from the deck corner, staggered per slot. */
+.hand.htmx-settling .card {
+  animation: deal-in 0.38s cubic-bezier(0.18, 0.9, 0.28, 1.04) backwards;
+}
+.hand.htmx-settling .card:nth-child(2) { animation-delay: 0.05s; }
+.hand.htmx-settling .card:nth-child(3) { animation-delay: 0.10s; }
+.hand.htmx-settling .card:nth-child(4) { animation-delay: 0.15s; }
+.hand.htmx-settling .card:nth-child(5) { animation-delay: 0.20s; }
+
+@keyframes deal-in {
+  from { opacity: 0; transform: translate(46px, -26px) rotate(7deg); }
+}
+
+/* The played card lifts away while its request is held (game.js). */
+.card-played {
+  animation: play-out 0.17s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes play-out {
+  to { opacity: 0; transform: translateY(-34px) scale(1.12) rotate(-2deg); }
+}
+
+/* Siblings settle down as the hand is replaced. */
+.hand.htmx-swapping .card:not(.card-played) {
+  animation: mull 0.15s ease-in forwards;
+}
+
+@keyframes mull {
+  to { opacity: 0; transform: translateY(10px) scale(0.97); }
+}
+
+/* Scene feedback: stat row pulses on change, ending badge pops in. */
+#scene.htmx-settling .stats { animation: stat-pulse 0.3s ease-out; }
+
+@keyframes stat-pulse {
+  30% { transform: scale(1.04); color: #e6c95a; }
+}
+
+.ending .ending-badge {
+  animation: badge-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+}
+
+@keyframes badge-pop {
+  from { transform: scale(0.4); opacity: 0; }
+}
+
+.ending form { animation: fade-in 0.4s ease-out 0.25s backwards; }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+/* --- Header sound toggle ------------------------------------------------ */
+
+.icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  color: var(--muted);
+  vertical-align: middle;
+}
+
+#sfx-toggle { padding: 0.35rem 0.5rem; }
+#sfx-toggle:hover .icon { color: var(--gold); }
+#sfx-toggle .icon-off { display: none; }
+#sfx-toggle[aria-pressed="false"] .icon-on { display: none; }
+#sfx-toggle[aria-pressed="false"] .icon-off { display: inline; }
+
+/* --- Deck inspector ------------------------------------------------------ */
+
+.deck-art {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--gold);
+}
+
+.deck-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.deck-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 #log {
   background: var(--panel);
@@ -287,5 +401,13 @@ button.primary { padding: 0.65rem 1.2rem; }
 @media (prefers-reduced-motion: reduce) {
   #scene.htmx-settling .scene-text,
   #scene.htmx-settling .stats,
-  .hand.htmx-settling .card { animation: none; }
+  .hand.htmx-settling .card,
+  .hand.htmx-swapping .card,
+  .card,
+  .card-played,
+  .ending .ending-badge,
+  .ending form {
+    animation: none !important;
+    transition: none !important;
+  }
 }

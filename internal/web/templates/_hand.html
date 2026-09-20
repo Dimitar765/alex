@@ -1,9 +1,10 @@
 {{define "handInner"}}
 {{if not .Scene.Ending}}
 {{range .Hand}}
-<form class="card" method="post" action="/game/action" hx-post="/game/action" hx-target="#scene" hx-swap="outerHTML">
+<form class="card" method="post" action="/game/action" hx-post="/game/action" hx-target="#scene" hx-swap="outerHTML swap:120ms settle:350ms">
   <input type="hidden" name="card" value="{{.ID}}">
   <button type="submit" class="card-btn" {{if not .Playable}}disabled title="Requires Treasury {{.Cost}}"{{end}}>
+    <span class="card-art-wrap"><svg class="card-art" viewBox="0 0 64 64" aria-hidden="true"><use href="/static/art.svg#art_{{.ID}}"/></svg></span>
     <span class="card-name">{{.Name}}{{if .Cost}} <span class="card-cost" title="Treasury cost">{{.Cost}}</span>{{end}}</span>
     <span class="card-text">{{.Text}}</span>
   </button>

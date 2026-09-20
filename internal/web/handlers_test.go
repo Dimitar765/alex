@@ -450,10 +450,33 @@ func TestChronicleEmptyThenPopulated(t *testing.T) {
 func TestLayoutLoadsEnhancementScripts(t *testing.T) {
 	c, base := newTestClient(t)
 	b := readBody(t, get(t, c, base+"/"))
-	for _, want := range []string{`src="/static/htmx.min.js"`, `src="/static/keys.js"`} {
+	for _, want := range []string{
+		`src="/static/htmx.min.js"`,
+		`src="/static/game.js"`,
+		`id="sfx-toggle"`,
+		`href="/static/art.svg#icon-sound"`,
+	} {
 		if !strings.Contains(b, want) {
 			t.Fatalf("layout missing %s", want)
 		}
+	}
+}
+
+// Cards render their emblem artwork and the deck inspector shows
+// thumbnails; every shipped card id must have a matching symbol.
+func TestCardsRenderArtwork(t *testing.T) {
+	c, base := newTestClient(t)
+	startGame(t, c, base)
+	b := readBody(t, get(t, c, base+"/"))
+	// The test deck holds exactly two cards, both dealt into the hand.
+	if n := strings.Count(b, `class="card-art" viewBox="0 0 64 64"`); n != 2 {
+		t.Fatalf("hand must render 2 card artworks, got %d", n)
+	}
+	if !strings.Contains(b, `href="/static/art.svg#art_`) {
+		t.Fatal("card artworks must reference the art sprite")
+	}
+	if !strings.Contains(b, `class="deck-art" viewBox="0 0 64 64"`) {
+		t.Fatal("deck inspector must render thumbnails")
 	}
 }
 

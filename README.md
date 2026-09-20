@@ -77,6 +77,24 @@ mutiny, humans do not. The same seed always reproduces the same runs, and
 `internal/sim` tests assert zero stuck runs and full ending reachability
 on the shipped campaign.
 
+## Presentation
+
+The card table look is pure CSS + SVG + a dash of vanilla JS:
+
+- **Artwork**: every card has a hand-drawn line-art emblem
+  (`internal/web/static/art.svg`, a `<symbol>` sprite in pottery-style
+  gold, referenced via `<use>`); the deck inspector shows thumbnails.
+- **Animation**: cards deal in with a staggered slide, the played card
+  lifts away while its request is held (`htmx:confirm`), siblings settle,
+  the stat row pulses on change, and the ending badge pops. All of it
+  respects `prefers-reduced-motion`.
+- **Sound**: a tiny WebAudio synth in `game.js` (no audio files) —
+  card flick, choice tick, error thud, and per-outcome ending chimes —
+  with a header toggle persisted in `localStorage`.
+
+Everything degrades: without JavaScript the game plays natively over
+plain form posts, just without sound and motion.
+
 ## Saves
 
 One JSON file per session in `saves/` (see `-saves` flag), written
