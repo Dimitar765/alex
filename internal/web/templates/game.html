@@ -1,6 +1,12 @@
 {{define "content"}}
-<section id="scene">{{template "sceneInner" .}}</section>
-<section id="hand" class="hand">{{template "handInner" .}}</section>
-<section id="deck">{{template "deckInner" .}}</section>
-<section id="log">{{template "logInner" .}}</section>
+<div class="board">
+  <aside class="table-side">
+    <section id="hand" class="hand">{{template "handInner" .}}</section>
+    <section id="deck">{{template "deckInner" .}}</section>
+  </aside>
+  <div class="play-side">
+    <section id="scene">{{template "sceneInner" .}}</section>
+    <section id="log">{{template "logInner" .}}</section>
+  </div>
+</div>
 {{end}}

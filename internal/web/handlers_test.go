@@ -604,6 +604,21 @@ func TestScoutActionFlow(t *testing.T) {
 	}
 }
 
+// The table splits: hand and deck controls left, scene and log right.
+func TestBoardLayoutStructure(t *testing.T) {
+	c, base := newTestClient(t)
+	startGame(t, c, base)
+	b := readBody(t, get(t, c, base+"/"))
+	for _, want := range []string{`class="board"`, `class="table-side"`, `class="play-side"`} {
+		if !strings.Contains(b, want) {
+			t.Fatalf("board layout missing %q", want)
+		}
+	}
+	if i, j, k := strings.Index(b, `id="hand"`), strings.Index(b, `id="deck"`), strings.Index(b, `id="scene"`); !(i < j && j < k) {
+		t.Fatalf("table side must precede the play side in DOM order: hand=%d deck=%d scene=%d", i, j, k)
+	}
+}
+
 func TestActionWithoutStateRedirectsHome(t *testing.T) {
 	c, base := newTestClient(t)
 	get(t, c, base+"/") // establish session cookie only

@@ -48,11 +48,38 @@ header h1 {
 }
 
 main {
-  max-width: 60rem;
+  max-width: 64rem;
   margin: 0 auto;
   padding: 1.5rem 2rem 4rem;
   display: grid;
   gap: 1.25rem;
+}
+
+/* The card table: hand and deck controls on the left, play on the right. */
+.board {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.table-side {
+  display: grid;
+  gap: 0.75rem;
+  position: sticky;
+  top: 1.25rem;
+}
+
+.play-side {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+@media (max-width: 55rem) {
+  .board { grid-template-columns: 1fr; }
+  .table-side { order: 2; position: static; }
+  .play-side { order: 1; }
 }
 
 #scene {
@@ -178,7 +205,7 @@ button.primary { padding: 0.65rem 1.2rem; }
 
 .hand {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
   gap: 0.75rem;
 }
 
@@ -340,7 +367,7 @@ button.primary { padding: 0.65rem 1.2rem; }
   padding: 0.9rem 1.25rem;
 }
 
-#deck { margin-top: -0.75rem; }
+#deck { min-width: 0; }
 
 .deck-row {
   display: flex;
