@@ -2,7 +2,6 @@ package desktop
 
 import (
 	"fmt"
-	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
@@ -110,8 +109,16 @@ func (titleScreen) draw(g *Game, dst *ebiten.Image) {
 	}
 }
 
-// tableScreen is the main play view; its full render lands in Phase 3.
-type tableScreen struct{}
+// tableScreen is the main play view: card fan left, scene and log right.
+type tableScreen struct {
+	cards *cardCache
+}
+
+func (s *tableScreen) ensureCache() {
+	if s.cards == nil {
+		s.cards = newCardCache()
+	}
+}
 
 func (tableScreen) update(g *Game) error {
 	if g.keysPressed[ebiten.KeyEscape] {
@@ -121,39 +128,152 @@ func (tableScreen) update(g *Game) error {
 }
 
 func (s tableScreen) draw(g *Game, dst *ebiten.Image) {
+	s.ensureCache()
 	dst.Fill(themeBackground)
 	v := g.model.View()
+	l := newLayout()
 	drawTable(g, dst, v)
+
+	// Fan of hand cards in the table column, below the scene panel band.
+	if v.Scene.Ending == "" {
+		positions := fanPositions(len(v.Hand), l.table.W)
+		for i, c := range v.Hand {
+			p := positions[i]
+			// Hover lift: cards rise toward the cursor like the web fan.
+			hover := Rectangle{X: p.X - cardW/2, Y: p.Y - cardH/2, W: cardW, H: cardH}.
+				Contains(g.cursorX, g.cursorY)
+			if hover && c.Playable {
+				p.Y -= 16
+			}
+			s.cards.drawCard(dst, s.cards.face(g, c), p.X, p.Y, p.Angle, 1, !c.Playable)
+			if hover && c.Playable && g.mouseClicked {
+				if r := g.model.PlayCard(c.ID); r.Err == nil {
+					g.consumeEffects(r)
+				}
+			}
+		}
+
+		// Deck row under the fan.
+		rowY := l.table.Y + l.table.H - 96
+		drawText(dst, fmt.Sprintf("Deck · %d", v.DeckCount), g.theme.Face(faceSmall),
+			l.table.X+4, rowY, themeGold)
+		drawText(dst, fmt.Sprintf("Discard · %d", v.DiscardCount), g.theme.Face(faceSmall),
+			l.table.X+4, rowY+30, themeMuted)
+
+		shuffleLabel := fmt.Sprintf("Shuffle · %d", v.DiscardCount)
+		shuffle := button{Rect: Rectangle{X: l.table.X + l.table.W - 110, Y: rowY - 4, W: 110, H: 36}, Label: shuffleLabel}
+		scout := button{Rect: Rectangle{X: l.table.X + l.table.W - 228, Y: rowY - 4, W: 110, H: 36}, Label: "Scout"}
+		if scout.clicked(g) {
+			g.model.Scout()
+		}
+		if shuffle.clicked(g) {
+			g.model.Shuffle()
+		}
+		scout.draw(g, dst)
+		shuffle.draw(g, dst)
+	}
 }
 
-// drawTable renders the play view: fan, deck row, scene panel, log.
+// abs is math.Abs for the fan arc.
+func abs(f float64) float64 {
+	if f < 0 {
+		return -f
+	}
+	return f
+}
+
+// cardSlot is one fan position: card center and tilt.
+type cardSlot struct {
+	X, Y, Angle float64
+}
+
+// fanPositions lays out n cards as a fan across tableW: centered, even
+// spacing (shrinking for large hands), edges tilted and dropped — the 2D
+// descendant of hand3d.js's fanSlot.
+func fanPositions(n int, tableW float64) []cardSlot {
+	if n <= 0 {
+		return nil
+	}
+	const spacing = 118.0
+	s := spacing
+	if n > 1 {
+		s = min(spacing, (tableW-cardW)/float64(n-1))
+	}
+	cx := tableW / 2
+	out := make([]cardSlot, n)
+	for i := range out {
+		t := float64(i) - float64(n-1)/2
+		out[i] = cardSlot{
+			X:     cx + t*s,
+			Y:     150 + abs(t)*14,
+			Angle: -t * 0.085,
+		}
+	}
+	return out
+}
+
+// drawTable renders the play side: scene panel, stats, choices, log.
 func drawTable(g *Game, dst *ebiten.Image, v *app.View) {
 	l := newLayout()
 	panel(dst, l.scenePanel)
-	drawText(dst, v.Scene.Text, g.theme.Face(faceScene),
-		l.scenePanel.X+20, l.scenePanel.Y+18, themeInk)
 
-	statsY := l.scenePanel.Y + 20 + wrappedHeight(v.Scene.Text, g.theme.Face(faceScene), l.scenePanel.W-40) + 10
-	stats := fmt.Sprintf("Legacy %d   Army %d   Treasury %d", v.Stats.Legacy, v.Stats.Army, v.Stats.Treasury)
+	textH := wrappedHeight(v.Scene.Text, g.theme.Face(faceScene), l.scenePanel.W-40)
+	drawWrapped(dst, v.Scene.Text, g.theme.Face(faceScene),
+		l.scenePanel.X+20, l.scenePanel.Y+18, l.scenePanel.W-40, themeInk)
+
+	statsY := l.scenePanel.Y + 18 + textH + 10
+	stats := fmt.Sprintf("Legacy %d   Army %d   Treasury %d",
+		v.Stats.Legacy, v.Stats.Army, v.Stats.Treasury)
 	drawText(dst, stats, g.theme.Face(faceBody), l.scenePanel.X+20, statsY, themeGold)
 
-	choicesY := statsY + 34
+	if v.Scene.Ending != "" {
+		// Terminal scene: badge, summary, and the way back in.
+		drawTextAligned(dst, v.Scene.Ending, g.theme.Face(faceSmall),
+			l.scenePanel.X+20, statsY+36, 140, 30, themeGold, text.AlignCenter)
+		drawText(dst, fmt.Sprintf("The campaign ends after %d turns · %d cards played · %d campaigns completed",
+			v.Turns, v.CardsPlayed, v.Campaigns),
+			g.theme.Face(faceSmall), l.scenePanel.X+20, statsY+72, themeMuted)
+		again := button{Rect: Rectangle{X: l.scenePanel.X + 20, Y: statsY + 104, W: 240, H: 42},
+			Label: "Begin a new campaign", primary: true}
+		again.draw(g, dst)
+		if again.clicked(g) {
+			g.model.NewGame()
+		}
+		return
+	}
+
+	choicesY := statsY + 40
 	for _, c := range v.Choices {
 		clr := themeInk
 		if !c.Available {
 			clr = themeMuted
 		}
-		drawWrapped(dst, fmt.Sprintf("%d. %s", c.Index+1, c.Text),
-			g.theme.Face(faceBody), l.scenePanel.X+20, choicesY, l.scenePanel.W-40, clr)
-		choicesY += wrappedHeight(c.Text, g.theme.Face(faceBody), l.scenePanel.W-40) + 8
+		label := fmt.Sprintf("%d. %s", c.Index+1, c.Text)
+		if c.Requires != "" {
+			label += "  — requires " + c.Requires
+		}
+		h := wrappedHeight(label, g.theme.Face(faceBody), l.scenePanel.W-40)
+		drawWrapped(dst, label, g.theme.Face(faceBody),
+			l.scenePanel.X+20, choicesY, l.scenePanel.W-40, clr)
+		// Number keys choose; a click on the line does too.
+		line := Rectangle{X: l.scenePanel.X + 12, Y: choicesY - 2, W: l.scenePanel.W - 24, H: h + 6}
+		if (line.Contains(g.cursorX, g.cursorY) && g.mouseClicked) ||
+			(c.Available && g.keysPressed[digitKey(c.Index)]) {
+			if c.Available {
+				if r := g.model.Choose(c.Index); r.Err == nil {
+					g.consumeEffects(r)
+				}
+			}
+		}
+		choicesY += h + 10
 	}
 
 	panel(dst, l.logPanel)
 	logY := l.logPanel.Y + 16
 	for i, line := range v.Log {
-		clr := color.RGBA(themeMuted)
+		clr := themeMuted
 		if i == 0 {
-			clr = color.RGBA(themeInk)
+			clr = themeInk
 		}
 		logY += drawWrapped(dst, line, g.theme.Face(faceSmall),
 			l.logPanel.X+18, logY, l.logPanel.W-36, clr) + 6
@@ -161,6 +281,31 @@ func drawTable(g *Game, dst *ebiten.Image, v *app.View) {
 			break
 		}
 	}
+}
+
+// digitKey maps choice index 0-8 to the number row keys.
+func digitKey(i int) ebiten.Key {
+	switch i {
+	case 0:
+		return ebiten.Key1
+	case 1:
+		return ebiten.Key2
+	case 2:
+		return ebiten.Key3
+	case 3:
+		return ebiten.Key4
+	case 4:
+		return ebiten.Key5
+	case 5:
+		return ebiten.Key6
+	case 6:
+		return ebiten.Key7
+	case 7:
+		return ebiten.Key8
+	case 8:
+		return ebiten.Key9
+	}
+	return ebiten.KeyEscape
 }
 
 // endingScreen shows the run summary once the campaign is over.

@@ -111,3 +111,8 @@ func (g *Game) replaceScreen(s screen) {
 	}
 	g.stack = append(g.stack, s)
 }
+
+// consumeEffects feeds an action's FX events to the animation layer.
+// Phase 5 turns this into tweens/particles/audio; for now the events are
+// acknowledged so the view-model contract is exercised end to end.
+func (g *Game) consumeEffects(r app.Result) {}
