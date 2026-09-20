@@ -21,20 +21,23 @@ const MaxTurns = 150
 const cardPlayOdds = 2 // out of 5
 
 // Result summarizes one simulated campaign.
+// Result is one simulated campaign.
 type Result struct {
-	Ending  string // ending classification, or "stuck"
-	SceneID string // final scene
-	Turns   int
+	Ending        string // ending classification, or "stuck"
+	SceneID       string // final scene
+	Turns         int
+	BattleArrived bool // the forced battle scene was entered
 }
 
 // Report aggregates simulation results.
 type Report struct {
-	Runs      int
-	Endings   map[string]int
-	TurnsAvg  float64
-	TurnsMax  int
-	Stuck     int
-	StuckHere map[string]int // scene -> times stuck there
+	Runs          int
+	Endings       map[string]int
+	TurnsAvg      float64
+	TurnsMax      int
+	Stuck         int
+	StuckHere     map[string]int // scene -> times stuck there
+	BattleArrived int              // runs that faced the forced battle
 }
 
 // Simulate plays n campaigns with the random-greedy policy, deterministically
@@ -55,17 +58,21 @@ func NewRun(lib *content.Library, rng *rand.Rand) *game.State {
 
 // play drives one run to an ending (or the turn cap) and returns its result.
 func play(st *game.State, lib *content.Library, rng *rand.Rand) Result {
+	battle := false
 	for st.Turns < MaxTurns {
+		if st.SceneID == content.BattleScene {
+			battle = true
+		}
 		scene := lib.Scenes[st.SceneID]
 		if scene.Ending != "" {
-			return Result{Ending: scene.Ending, SceneID: scene.ID, Turns: st.Turns}
+			return Result{Ending: scene.Ending, SceneID: scene.ID, Turns: st.Turns, BattleArrived: battle}
 		}
 		if act(st, lib, rng) {
 			continue
 		}
-		return Result{Ending: "stuck", SceneID: st.SceneID, Turns: st.Turns}
+		return Result{Ending: "stuck", SceneID: st.SceneID, Turns: st.Turns, BattleArrived: battle}
 	}
-	return Result{Ending: "stuck", SceneID: st.SceneID, Turns: st.Turns}
+	return Result{Ending: "stuck", SceneID: st.SceneID, Turns: st.Turns, BattleArrived: battle}
 }
 
 // act takes one turn: with a fixed chance it plays a random playable card
@@ -107,6 +114,9 @@ func Aggregate(results []Result) Report {
 	total := 0
 	for _, res := range results {
 		r.Endings[res.Ending]++
+		if res.BattleArrived {
+			r.BattleArrived++
+		}
 		if res.Ending == "stuck" {
 			r.Stuck++
 			r.StuckHere[res.SceneID]++
@@ -126,6 +136,7 @@ func Aggregate(results []Result) Report {
 func (r Report) String() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "runs        %d\n", r.Runs)
+	fmt.Fprintf(&b, "battle      %d\n", r.BattleArrived)
 	classes := make([]string, 0, len(r.Endings))
 	for c := range r.Endings {
 		classes = append(classes, c)
