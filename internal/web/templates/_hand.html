@@ -1,7 +1,7 @@
 {{define "handInner"}}
 {{if not .Scene.Ending}}
 {{range .Hand}}
-<form class="card" hx-post="/game/action" hx-target="#scene" hx-swap="outerHTML">
+<form class="card" method="post" action="/game/action" hx-post="/game/action" hx-target="#scene" hx-swap="outerHTML">
   <input type="hidden" name="card" value="{{.ID}}">
   <button type="submit" class="card-btn" {{if not .Playable}}disabled title="Requires Treasury {{.Cost}}"{{end}}>
     <span class="card-name">{{.Name}}{{if .Cost}} <span class="card-cost" title="Treasury cost">{{.Cost}}</span>{{end}}</span>

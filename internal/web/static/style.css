@@ -157,3 +157,22 @@ button.primary { padding: 0.65rem 1.2rem; }
   color: var(--muted);
   font-size: 0.9rem;
 }
+
+.log li:first-child { color: var(--ink); }
+
+/* htmx adds htmx-settling to swapped elements; the keyframes give each
+   action a subtle enter animation. */
+@keyframes swap-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+#scene.htmx-settling .scene-text,
+#scene.htmx-settling .stats { animation: swap-in 0.25s ease-out; }
+.hand.htmx-settling .card { animation: swap-in 0.25s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  #scene.htmx-settling .scene-text,
+  #scene.htmx-settling .stats,
+  .hand.htmx-settling .card { animation: none; }
+}

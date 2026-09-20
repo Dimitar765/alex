@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
+	"time"
 
 	"goGame/internal/content"
 	"goGame/internal/game"
@@ -136,4 +138,36 @@ func writeFileAtomic(path string, b []byte) error {
 
 func (st *Store) path(session string) string {
 	return filepath.Join(st.dir, session+".json")
+}
+
+// Sweep deletes save files whose session has been idle longer than maxAge
+// and drops their cached states. It returns the number of saves removed.
+func (st *Store) Sweep(maxAge time.Duration) int {
+	if st.dir == "" {
+		return 0
+	}
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	cutoff := time.Now().Add(-maxAge)
+	entries, err := os.ReadDir(st.dir)
+	if err != nil {
+		return 0
+	}
+	n := 0
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || filepath.Ext(name) != ".json" {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil || info.ModTime().After(cutoff) {
+			continue
+		}
+		session := strings.TrimSuffix(name, filepath.Ext(name))
+		if os.Remove(st.path(session)) == nil {
+			delete(st.games, session)
+			n++
+		}
+	}
+	return n
 }

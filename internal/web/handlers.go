@@ -79,7 +79,7 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request, session string) 
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	s.respondPartial(w, s.buildView(next, err))
+	s.respondAction(w, r, s.buildView(next, err))
 }
 
 func (s *Server) applyChoice(st *game.State, idx string) error {
@@ -96,9 +96,16 @@ func (s *Server) applyChoice(st *game.State, idx string) error {
 
 // buildView projects state into template data. A non-nil engine error is
 // appended to the rendered log only; the persisted state stays untouched.
+// The log renders newest first so the latest action is always on top.
 func (s *Server) buildView(st *game.State, err error) view {
 	scene := s.store.lib.Scenes[st.SceneID]
-	v := view{Stats: st.Stats, Scene: scene, Log: slices.Clone(st.Log)}
+	v := view{Stats: st.Stats, Scene: scene}
+	log := slices.Clone(st.Log)
+	if err != nil {
+		log = append(log, "Error: "+err.Error())
+	}
+	slices.Reverse(log)
+	v.Log = log
 	for i, c := range scene.Choices {
 		var reqs []string
 		if c.RequiresCard != "" {
@@ -148,4 +155,15 @@ func (s *Server) respondPartial(w http.ResponseWriter, v view) {
 	if err := s.actionT.ExecuteTemplate(w, "actionResponse", v); err != nil {
 		log.Printf("render partials: %v", err)
 	}
+}
+
+// respondAction picks the response shape: htmx requests (HX-Request
+// header) get the partial swap set; plain form posts, i.e. browsers
+// without JavaScript, get a full page render.
+func (s *Server) respondAction(w http.ResponseWriter, r *http.Request, v view) {
+	if r.Header.Get("HX-Request") == "true" {
+		s.respondPartial(w, v)
+		return
+	}
+	s.renderPage(w, "game.html", v)
 }

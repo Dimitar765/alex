@@ -82,6 +82,24 @@ func postForm(t *testing.T, c *http.Client, path string, form url.Values) *http.
 	return resp
 }
 
+// postAction posts an action with the htmx request header, as the
+// JavaScript-enhanced UI sends it.
+func postAction(t *testing.T, c *http.Client, base string, form url.Values) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest("POST", base+"/game/action", strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { resp.Body.Close() })
+	return resp
+}
+
 func readBody(t *testing.T, resp *http.Response) string {
 	t.Helper()
 	b, err := io.ReadAll(resp.Body)
@@ -136,7 +154,7 @@ func TestActionPlaysCardPartial(t *testing.T) {
 	startGame(t, c, base)
 	// Decree is free and funds the treasury; the costed Phalanx then
 	// becomes playable in the same partial flow.
-	resp := postForm(t, c, base+"/game/action", url.Values{"card": {"decree"}})
+	resp := postAction(t, c, base, url.Values{"card": {"decree"}})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("POST /game/action = %d, want 200", resp.StatusCode)
 	}
@@ -151,7 +169,7 @@ func TestActionPlaysCardPartial(t *testing.T) {
 			t.Fatalf("action response missing %q, got: %s", want, b)
 		}
 	}
-	resp = postForm(t, c, base+"/game/action", url.Values{"card": {"phalanx"}})
+	resp = postAction(t, c, base, url.Values{"card": {"phalanx"}})
 	b = readBody(t, resp)
 	for _, want := range []string{"Played Phalanx", "Treasury -2", "Army 2"} {
 		if !strings.Contains(b, want) {
@@ -163,7 +181,7 @@ func TestActionPlaysCardPartial(t *testing.T) {
 func TestActionChoiceSwapsScene(t *testing.T) {
 	c, base := newTestClient(t)
 	startGame(t, c, base)
-	resp := postForm(t, c, base+"/game/action", url.Values{"choice": {"0"}})
+	resp := postAction(t, c, base, url.Values{"choice": {"0"}})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("POST /game/action = %d, want 200", resp.StatusCode)
 	}
@@ -175,7 +193,7 @@ func TestActionChoiceSwapsScene(t *testing.T) {
 func TestActionRendersEngineErrorWithout500(t *testing.T) {
 	c, base := newTestClient(t)
 	startGame(t, c, base)
-	resp := postForm(t, c, base+"/game/action", url.Values{"card": {"ghost"}})
+	resp := postAction(t, c, base, url.Values{"card": {"ghost"}})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("engine error must re-render, got %d", resp.StatusCode)
 	}
@@ -189,7 +207,7 @@ func TestActionRendersEngineErrorWithout500(t *testing.T) {
 func TestFailedActionDoesNotLoseCards(t *testing.T) {
 	c, base := newTestClient(t)
 	startGame(t, c, base)
-	postForm(t, c, base+"/game/action", url.Values{"card": {"ghost"}})
+	postAction(t, c, base, url.Values{"card": {"ghost"}})
 	b := readBody(t, get(t, c, base+"/"))
 	if !strings.Contains(b, "Phalanx") {
 		t.Fatal("failed action must not remove cards from the hand")
@@ -202,7 +220,7 @@ func TestStatGatedChoiceShowsRequirementUntilMet(t *testing.T) {
 
 	// Before: on the field scene the gated choice is disabled and names
 	// its requirement.
-	postForm(t, c, base+"/game/action", url.Values{"choice": {"0"}}) // title → field
+	postAction(t, c, base, url.Values{"choice": {"0"}}) // title → field
 	b := readBody(t, get(t, c, base+"/"))
 	if !strings.Contains(b, "Claim the vault") {
 		t.Fatalf("field scene missing gated choice, got: %s", b)
@@ -213,7 +231,7 @@ func TestStatGatedChoiceShowsRequirementUntilMet(t *testing.T) {
 
 	// After playing a treasury card, the action partial re-renders the
 	// choice without a requirement tooltip.
-	resp := postForm(t, c, base+"/game/action", url.Values{"card": {"decree"}})
+	resp := postAction(t, c, base, url.Values{"card": {"decree"}})
 	b = readBody(t, resp)
 	if strings.Contains(b, `title="Requires`) {
 		t.Fatalf("requirement tooltip must disappear once met, got: %s", b)
@@ -223,10 +241,10 @@ func TestStatGatedChoiceShowsRequirementUntilMet(t *testing.T) {
 func TestEndingFlowRendersSummaryAndRefusesFurtherActions(t *testing.T) {
 	c, base := newTestClient(t)
 	startGame(t, c, base)
-	postForm(t, c, base+"/game/action", url.Values{"card": {"decree"}})
-	postForm(t, c, base+"/game/action", url.Values{"choice": {"0"}}) // title → field
+	postAction(t, c, base, url.Values{"card": {"decree"}})
+	postAction(t, c, base, url.Values{"choice": {"0"}}) // title → field
 
-	resp := postForm(t, c, base+"/game/action", url.Values{"choice": {"1"}}) // claim vault
+	resp := postAction(t, c, base, url.Values{"choice": {"1"}}) // claim vault
 	b := readBody(t, resp)
 	for _, want := range []string{
 		"The world is yours.",
@@ -242,7 +260,7 @@ func TestEndingFlowRendersSummaryAndRefusesFurtherActions(t *testing.T) {
 	}
 
 	// Post-ending actions are refused and leave the ending scene in place.
-	resp = postForm(t, c, base+"/game/action", url.Values{"card": {"phalanx"}})
+	resp = postAction(t, c, base, url.Values{"card": {"phalanx"}})
 	b = readBody(t, resp)
 	if !strings.Contains(b, "campaign is over") {
 		t.Fatalf("post-ending card play must be refused, got: %s", b)
@@ -263,7 +281,7 @@ func TestCardCostDisablesUntilAffordable(t *testing.T) {
 	}
 
 	// After a treasury card, the action partial re-enables it.
-	resp := postForm(t, c, base+"/game/action", url.Values{"card": {"decree"}})
+	resp := postAction(t, c, base, url.Values{"card": {"decree"}})
 	b = readBody(t, resp)
 	if strings.Contains(b, `disabled title="Requires Treasury`) {
 		t.Fatalf("affordable card must be enabled, got: %s", b)
@@ -276,9 +294,9 @@ func TestCardCostDisablesUntilAffordable(t *testing.T) {
 func TestConsumingChoiceSpendsCard(t *testing.T) {
 	c, base := newTestClient(t)
 	startGame(t, c, base)
-	postForm(t, c, base+"/game/action", url.Values{"choice": {"0"}}) // title → field
+	postAction(t, c, base, url.Values{"choice": {"0"}}) // title → field
 
-	resp := postForm(t, c, base+"/game/action", url.Values{"choice": {"2"}}) // tear up decree
+	resp := postAction(t, c, base, url.Values{"choice": {"2"}}) // tear up decree
 	b := readBody(t, resp)
 	if strings.Contains(b, "Error:") {
 		t.Fatalf("consuming choice failed: %s", b)
@@ -288,6 +306,52 @@ func TestConsumingChoiceSpendsCard(t *testing.T) {
 	}
 	if !strings.Contains(b, "spent Royal Decree") {
 		t.Fatalf("log must record the spent card, got: %s", b)
+	}
+}
+
+// A plain form post (no HX-Request header) must render a full page, not
+// the htmx fragment set — that is the no-JavaScript fallback.
+func TestActionWithoutJSReturnsFullPage(t *testing.T) {
+	c, base := newTestClient(t)
+	startGame(t, c, base)
+	resp := postForm(t, c, base+"/game/action", url.Values{"card": {"decree"}})
+	b := readBody(t, resp)
+	if !strings.Contains(b, "<!DOCTYPE html>") {
+		t.Fatal("plain post must render a full HTML page")
+	}
+	if strings.Contains(b, "hx-swap-oob") {
+		t.Fatal("plain post must not return out-of-band swap fragments")
+	}
+	if !strings.Contains(b, "Played Royal Decree") {
+		t.Fatal("action must still apply without JavaScript")
+	}
+}
+
+func TestLogNewestFirstWithLiveRegion(t *testing.T) {
+	c, base := newTestClient(t)
+	startGame(t, c, base)
+	postAction(t, c, base, url.Values{"choice": {"0"}}) // title → field
+	postAction(t, c, base, url.Values{"choice": {"0"}}) // field → title
+	b := readBody(t, get(t, c, base+"/"))
+	if !strings.Contains(b, `role="log"`) {
+		t.Fatal("log must be a live region for screen readers")
+	}
+	i := strings.Index(b, `<ul class="log" role="log">`)
+	first := b[strings.Index(b[i:], "<li>")+i:]
+	if !strings.HasPrefix(first, "<li>Return to the coast") {
+		t.Fatalf("newest log entry must render first, got: %.80s", first)
+	}
+}
+
+func TestSessionCookieHasExpiry(t *testing.T) {
+	c, base := newTestClient(t)
+	resp := get(t, c, base+"/")
+	cookie := resp.Header.Get("Set-Cookie")
+	if !strings.Contains(cookie, "Max-Age=") {
+		t.Fatalf("session cookie must carry an expiry, got: %s", cookie)
+	}
+	if !strings.Contains(cookie, "HttpOnly") || !strings.Contains(cookie, "SameSite=Lax") {
+		t.Fatalf("session cookie must stay HttpOnly and Lax, got: %s", cookie)
 	}
 }
 

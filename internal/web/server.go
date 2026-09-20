@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"net/http"
 	"regexp"
+	"time"
 )
 
 // Directory walks skip _-prefixed files, so the partials get an explicit glob.
@@ -18,6 +19,10 @@ import (
 var assets embed.FS
 
 const sessionCookie = "gogame_session"
+
+// sessionMaxAge bounds how long a browser keeps its session cookie — and,
+// paired with Store.Sweep, how long saves linger on disk.
+const sessionMaxAge = 30 * 24 * time.Hour
 
 // Session values are exactly 32 lowercase hex chars (128-bit crypto/rand).
 var sessionRe = regexp.MustCompile(`^[0-9a-f]{32}$`)
@@ -85,6 +90,7 @@ func (s *Server) session(w http.ResponseWriter, r *http.Request) string {
 		Name:     sessionCookie,
 		Value:    v,
 		Path:     "/",
+		MaxAge:   int(sessionMaxAge.Seconds()),
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	})

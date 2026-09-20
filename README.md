@@ -1,0 +1,66 @@
+# Alexander — a card adventure
+
+A browser game about the life and legacy of Alexander the Great, mixing a
+text adventure with a card game. Written in Go with server-rendered HTML
+and htmx; no JavaScript required to play (htmx only enhances the UX).
+
+```
+go run ./cmd/gogame            # serves http://127.0.0.1:8080
+go run ./cmd/gogame -addr :9000 -saves /tmp/saves
+```
+
+## How it plays
+
+You march from Pella to Babylon through scenes with 2–3 choices. Three
+stats track your run — **Legacy** (fame), **Army** (strength), **Treasury**
+(gold). Choices may require stats or cards; some consume their card, and
+battle choices resolve through weighted random outcomes. Cards in hand can
+be played for their effects; powerful cards cost Treasury. The run ends in
+one of five endings: triumph, legacy, settle, or two flavors of defeat.
+
+## Architecture
+
+| Package | Role |
+|---|---|
+| `internal/content` | Data-driven schema (cards, scenes, effects) + full load-time validation |
+| `internal/game` | Rules engine: state, choices, card play, costs, randomness |
+| `internal/web` | HTTP server: templates, htmx partials, cookie sessions, JSON saves |
+| root (`assets`) | Embeds `content/` so the binary is self-contained |
+
+Rules live only in `internal/game`; `internal/content` defines what data is
+legal; `internal/web` only renders and persists. Every action runs on a
+clone of the state and commits atomically (memory + save file together), so
+a refused action or a crash can never corrupt a run.
+
+## Authoring content
+
+All content is JSON under `content/`. `content.Load` rejects, with a single
+aggregated error, any dangling card/scene reference, unknown stat key,
+malformed ending, unreachable scene, or bad random weight — the server
+refuses to boot on invalid content.
+
+**Cards** (`cards.json`): `id`, `name`, `text`, `cost` (Treasury to play,
+optional), `effects[]`.
+
+**Scenes** (`scenes.json`): `id`, `text`, `ending` (optional; terminal
+scenes have no choices), `choices[]` with `text`, optional
+`requiresCard`/`consumesCard`/`requiresStat`, and `effects[]`.
+
+**Effects**: `stat` deltas (`{"legacy": 2}`), `gain_card`/`lose_card`
+(to discard)/`remove_card` (exiled from the run), `goto`, and `random`
+weighted `outcomes[]` whose effects nest recursively.
+
+Stats are a closed set: `legacy`, `army`, `treasury`. Endings are a closed
+set: `triumph`, `legacy`, `settle`, `defeat`, `death`.
+
+## Saves
+
+One JSON file per session in `saves/` (see `-saves` flag), written
+atomically. Sessions idle for 30 days are swept at startup and daily.
+
+## Testing
+
+```
+go test -race ./...
+go vet ./...
+```

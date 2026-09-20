@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"goGame/internal/content"
 	"goGame/internal/game"
@@ -165,5 +166,35 @@ func TestAtomicSaveLeavesNoTempFiles(t *testing.T) {
 	}
 	if len(leftovers) != 0 {
 		t.Fatalf("temp files left behind: %v", leftovers)
+	}
+}
+
+func TestSweepRemovesOnlyStaleSaves(t *testing.T) {
+	dir := t.TempDir()
+	st := NewStore(testLib(t), dir)
+	fresh := &game.State{Session: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", SceneID: "title"}
+	stale := &game.State{Session: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", SceneID: "title"}
+	if err := st.Put(fresh); err != nil {
+		t.Fatalf("Put(fresh): %v", err)
+	}
+	if err := st.Put(stale); err != nil {
+		t.Fatalf("Put(stale): %v", err)
+	}
+	old := time.Now().Add(-48 * time.Hour)
+	if err := os.Chtimes(st.path(stale.Session), old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	if n := st.Sweep(24 * time.Hour); n != 1 {
+		t.Fatalf("Sweep() removed %d saves, want 1", n)
+	}
+	if _, err := os.Stat(st.path(fresh.Session)); err != nil {
+		t.Fatalf("fresh save must survive: %v", err)
+	}
+	if _, err := os.Stat(st.path(stale.Session)); !os.IsNotExist(err) {
+		t.Fatalf("stale save must be gone, got: %v", err)
+	}
+	if got := st.Get(stale.Session); got != nil {
+		t.Fatalf("swept session must not resurrect from cache: %+v", got)
 	}
 }

@@ -15,7 +15,7 @@
 {{else}}
 <div class="choices">
   {{range .Choices}}
-  <form hx-post="/game/action" hx-target="#scene" hx-swap="outerHTML">
+  <form method="post" action="/game/action" hx-post="/game/action" hx-target="#scene" hx-swap="outerHTML">
     <input type="hidden" name="choice" value="{{.Index}}">
     <button type="submit" {{if not .Available}}disabled title="Requires {{.Requires}}"{{end}}>{{.Text}}</button>
   </form>
