@@ -60,17 +60,16 @@ func (s *State) Clone() *State {
 	return &c
 }
 
-// Choose applies a scene choice. It fails if the choice requires a card that
-// is not in hand. Effects apply in declared order; the hand then refills.
+// Choose applies a scene choice. It fails if the choice's card or stat
+// requirements are not met. Effects apply in declared order; the hand then
+// refills.
 func (s *State) Choose(choice content.Choice, cards map[string]content.Card) error {
-	if choice.RequiresCard != "" && !slices.Contains(s.Hand, choice.RequiresCard) {
-		return fmt.Errorf("that path requires %s", displayName(choice.RequiresCard, cards))
+	if err := s.requirementError(choice, cards); err != nil {
+		return err
 	}
 	parts := []string{choice.Text}
-	for _, e := range choice.Effects {
-		if err := s.apply(e, cards, &parts); err != nil {
-			return err
-		}
+	if err := s.applyEffects(choice.Effects, cards, &parts); err != nil {
+		return err
 	}
 	s.drawUp()
 	s.appendLog(joinParts(parts))
@@ -88,13 +87,53 @@ func (s *State) PlayCard(id string, cards map[string]content.Card) error {
 	s.Hand = slices.Delete(s.Hand, i, i+1)
 	s.Discard = append(s.Discard, id)
 	parts := []string{"Played " + displayName(id, cards)}
-	for _, e := range card.Effects {
-		if err := s.apply(e, cards, &parts); err != nil {
-			return err
-		}
+	if err := s.applyEffects(card.Effects, cards, &parts); err != nil {
+		return err
 	}
 	s.drawUp()
 	s.appendLog(joinParts(parts))
+	return nil
+}
+
+// CanChoose reports whether the current hand and stats meet every
+// requirement on the choice.
+func (s *State) CanChoose(c content.Choice) bool {
+	return s.requirementError(c, nil) == nil
+}
+
+// requirementError returns the first unmet requirement as a player-facing
+// error, or nil when the choice is available.
+func (s *State) requirementError(c content.Choice, cards map[string]content.Card) error {
+	if c.RequiresCard != "" && !slices.Contains(s.Hand, c.RequiresCard) {
+		return fmt.Errorf("that path requires %s", displayName(c.RequiresCard, cards))
+	}
+	for _, k := range slices.Sorted(maps.Keys(c.RequiresStat)) {
+		if have := s.Stat(k); have < c.RequiresStat[k] {
+			return fmt.Errorf("that path requires %s %d (you have %d)", StatLabel(k), c.RequiresStat[k], have)
+		}
+	}
+	return nil
+}
+
+// Stat returns the current value of a stat key, or 0 for unknown keys.
+func (s *State) Stat(k string) int {
+	switch k {
+	case content.StatLegacy:
+		return s.Stats.Legacy
+	case content.StatArmy:
+		return s.Stats.Army
+	case content.StatTreasury:
+		return s.Stats.Treasury
+	}
+	return 0
+}
+
+func (s *State) applyEffects(effects []content.Effect, cards map[string]content.Card, parts *[]string) error {
+	for _, e := range effects {
+		if err := s.apply(e, cards, parts); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -113,18 +152,52 @@ func (s *State) apply(e content.Effect, cards map[string]content.Card, parts *[]
 			default:
 				return fmt.Errorf("unknown stat %q", k)
 			}
-			*parts = append(*parts, fmt.Sprintf("%s %+d", statLabel(k), v))
+			*parts = append(*parts, fmt.Sprintf("%s %+d", StatLabel(k), v))
 		}
 	case content.KindGainCard:
 		// Deck top = last element, so an appended card is drawn first.
 		s.Deck = append(s.Deck, e.CardID)
 		*parts = append(*parts, "gained "+displayName(e.CardID, cards))
+	case content.KindLoseCard:
+		// Lost for now: the card surfaces again when the discard cycles.
+		if takeCard(e.CardID, &s.Hand, &s.Deck) {
+			s.Discard = append(s.Discard, e.CardID)
+			*parts = append(*parts, "lost "+displayName(e.CardID, cards))
+		}
+	case content.KindRemoveCard:
+		if takeCard(e.CardID, &s.Hand, &s.Deck, &s.Discard) {
+			*parts = append(*parts, displayName(e.CardID, cards)+" is gone for good")
+		}
 	case content.KindGoto:
 		s.SceneID = e.Next
+	case content.KindRandom:
+		total := 0
+		for _, o := range e.Outcomes {
+			total += o.Weight
+		}
+		pick := rand.IntN(total)
+		for _, o := range e.Outcomes {
+			if pick < o.Weight {
+				return s.applyEffects(o.Effects, cards, parts)
+			}
+			pick -= o.Weight
+		}
 	default:
 		return fmt.Errorf("unknown effect kind %q", e.Kind)
 	}
 	return nil
+}
+
+// takeCard removes one copy of id from the first pile that holds it and
+// reports whether a copy was found.
+func takeCard(id string, piles ...*[]string) bool {
+	for _, p := range piles {
+		if i := slices.Index(*p, id); i >= 0 {
+			*p = slices.Delete(*p, i, i+1)
+			return true
+		}
+	}
+	return false
 }
 
 // drawUp refills the hand to HandSize, reshuffling the discard pile into the
@@ -159,7 +232,8 @@ func joinParts(parts []string) string {
 	return line
 }
 
-func statLabel(k string) string {
+// StatLabel returns the display name for a stat key.
+func StatLabel(k string) string {
 	switch k {
 	case content.StatLegacy:
 		return "Legacy"

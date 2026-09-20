@@ -66,6 +66,136 @@ func TestCloneIsIndependent(t *testing.T) {
 	}
 }
 
+func TestChooseRequiresStat(t *testing.T) {
+	_, m := testCards()
+	choice := content.Choice{
+		Text:         "Break the center",
+		RequiresStat: map[string]int{"army": 3, "legacy": 1},
+	}
+	s := &State{SceneID: "issus", Stats: Stats{Army: 2, Legacy: 5}, Hand: []string{"a"}}
+	err := s.Choose(choice, m)
+	if err == nil || !strings.Contains(err.Error(), "requires Army 3 (you have 2)") {
+		t.Fatalf("Choose() error = %v, want Army shortfall named", err)
+	}
+	if s.SceneID != "issus" {
+		t.Fatalf("rejected choice must not move the scene: %q", s.SceneID)
+	}
+	s.Stats.Army = 3
+	if err := s.Choose(choice, m); err != nil {
+		t.Fatalf("Choose() with met requirements failed: %v", err)
+	}
+}
+
+func TestCanChooseReportsAvailability(t *testing.T) {
+	choice := content.Choice{
+		RequiresCard: "e",
+		RequiresStat: map[string]int{"army": 1},
+	}
+	s := &State{Hand: []string{"a"}}
+	if s.CanChoose(choice) {
+		t.Fatal("choice must be unavailable without card or stat")
+	}
+	s.Stats.Army = 1
+	if s.CanChoose(choice) {
+		t.Fatal("choice must be unavailable without the card")
+	}
+	s.Hand = []string{"e", "a"}
+	if !s.CanChoose(choice) {
+		t.Fatal("choice must be available with card and stat")
+	}
+}
+
+func TestLoseCardMovesToDiscard(t *testing.T) {
+	_, m := testCards()
+	// A stocked deck keeps drawUp from reshuffling the discard, so the lost
+	// cards provably stay in the discard pile for now.
+	s := &State{SceneID: "x", Hand: []string{"a", "b"}, Deck: []string{"c", "e", "e", "d", "d", "e"}}
+	card := content.Card{ID: "a", Name: "Alpha", Effects: []content.Effect{
+		{Kind: content.KindLoseCard, CardID: "c"},
+		{Kind: content.KindLoseCard, CardID: "b"},
+	}}
+	m["a"] = card
+	if err := s.PlayCard("a", m); err != nil {
+		t.Fatalf("PlayCard() error = %v", err)
+	}
+	if slices.Contains(s.Hand, "b") || slices.Contains(s.Deck, "c") {
+		t.Fatalf("lost cards must leave hand and deck: hand=%v deck=%v", s.Hand, s.Deck)
+	}
+	// Lost cards surface in the discard and stay in the run.
+	for _, id := range []string{"a", "b", "c"} {
+		if !slices.Contains(s.Discard, id) {
+			t.Fatalf("discard must hold %q: %v", id, s.Discard)
+		}
+	}
+	if !strings.Contains(strings.Join(s.Log, " | "), "lost Charlie") {
+		t.Fatalf("log must name the lost card, got %v", s.Log)
+	}
+}
+
+func TestRemoveCardExilesFromRun(t *testing.T) {
+	_, m := testCards()
+	s := &State{SceneID: "x", Hand: []string{"a", "b"}, Deck: []string{"c"}, Discard: []string{"d"}}
+	choice := content.Choice{Text: "The horse dies", Effects: []content.Effect{
+		{Kind: content.KindRemoveCard, CardID: "a"}, // from hand
+		{Kind: content.KindRemoveCard, CardID: "c"}, // from deck
+		{Kind: content.KindRemoveCard, CardID: "d"}, // from discard
+	}}
+	if err := s.Choose(choice, m); err != nil {
+		t.Fatalf("Choose() error = %v", err)
+	}
+	piles := append(append(slices.Clone(s.Hand), s.Deck...), s.Discard...)
+	for _, id := range []string{"a", "c", "d"} {
+		if slices.Contains(piles, id) {
+			t.Fatalf("removed card %q still present: %v", id, piles)
+		}
+	}
+	if !strings.Contains(strings.Join(s.Log, " | "), "Alpha is gone for good") {
+		t.Fatalf("log must name the exile, got %v", s.Log)
+	}
+}
+
+func TestRandomSingleOutcomeIsDeterministic(t *testing.T) {
+	_, m := testCards()
+	s := &State{SceneID: "start", Hand: []string{"a"}}
+	choice := content.Choice{Text: "Fate is kind", Effects: []content.Effect{
+		{Kind: content.KindRandom, Outcomes: []content.Outcome{{
+			Weight:  1,
+			Effects: []content.Effect{{Kind: content.KindGoto, Next: "field"}},
+		}}},
+	}}
+	if err := s.Choose(choice, m); err != nil {
+		t.Fatalf("Choose() error = %v", err)
+	}
+	if s.SceneID != "field" {
+		t.Fatalf("SceneID = %q, want field", s.SceneID)
+	}
+}
+
+func TestRandomRespectsWeights(t *testing.T) {
+	_, m := testCards()
+	rare := 0
+	const trials = 3000
+	for i := 0; i < trials; i++ {
+		s := &State{SceneID: "start", Hand: []string{"a"}}
+		choice := content.Choice{Text: "Roll", Effects: []content.Effect{
+			{Kind: content.KindRandom, Outcomes: []content.Outcome{
+				{Weight: 3, Effects: []content.Effect{{Kind: content.KindStat, Delta: map[string]int{"army": 1}}}},
+				{Weight: 1, Effects: []content.Effect{{Kind: content.KindStat, Delta: map[string]int{"legacy": 1}}}},
+			}},
+		}}
+		if err := s.Choose(choice, m); err != nil {
+			t.Fatalf("trial %d: %v", i, err)
+		}
+		if s.Stats.Legacy == 1 {
+			rare++
+		}
+	}
+	// Expected 25% of trials; generous bounds keep the test stable.
+	if lo, hi := trials*15/100, trials*35/100; rare < lo || rare > hi {
+		t.Fatalf("rare outcome hit %d/%d times, want %d..%d", rare, trials, lo, hi)
+	}
+}
+
 func TestChooseRequiresCard(t *testing.T) {
 	_, m := testCards()
 	s := &State{SceneID: "river", Hand: []string{"a", "b"}}

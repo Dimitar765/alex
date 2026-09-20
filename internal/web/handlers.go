@@ -2,10 +2,13 @@ package web
 
 import (
 	"errors"
+	"fmt"
 	"log"
+	"maps"
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 
 	"goGame/internal/content"
 	"goGame/internal/game"
@@ -58,6 +61,9 @@ func (s *Server) newGame(w http.ResponseWriter, r *http.Request, session string)
 
 func (s *Server) action(w http.ResponseWriter, r *http.Request, session string) {
 	next, err := s.store.Update(session, func(st *game.State) error {
+		if scene := s.store.lib.Scenes[st.SceneID]; scene.Ending != "" {
+			return errors.New("the campaign is over — start a new game")
+		}
 		switch {
 		case r.FormValue("card") != "":
 			return st.PlayCard(r.FormValue("card"), s.store.lib.Cards)
@@ -92,15 +98,18 @@ func (s *Server) buildView(st *game.State, err error) view {
 	scene := s.store.lib.Scenes[st.SceneID]
 	v := view{Stats: st.Stats, Scene: scene, Log: slices.Clone(st.Log)}
 	for i, c := range scene.Choices {
-		requires := c.RequiresCard
-		if name := s.store.lib.Cards[requires].Name; name != "" {
-			requires = name
+		var reqs []string
+		if c.RequiresCard != "" {
+			reqs = append(reqs, s.store.lib.Cards[c.RequiresCard].Name)
+		}
+		for _, k := range slices.Sorted(maps.Keys(c.RequiresStat)) {
+			reqs = append(reqs, fmt.Sprintf("%s %d", game.StatLabel(k), c.RequiresStat[k]))
 		}
 		v.Choices = append(v.Choices, choiceView{
 			Index:     i,
 			Text:      c.Text,
-			Requires:  requires,
-			Available: c.RequiresCard == "" || slices.Contains(st.Hand, c.RequiresCard),
+			Requires:  strings.Join(reqs, " · "),
+			Available: st.CanChoose(c),
 		})
 	}
 	for _, id := range st.Hand {

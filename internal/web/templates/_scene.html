@@ -5,6 +5,14 @@
   <span>Army {{.Stats.Army}}</span>
   <span>Treasury {{.Stats.Treasury}}</span>
 </div>
+{{if .Scene.Ending}}
+<div class="ending">
+  <span class="ending-badge {{.Scene.Ending}}">{{.Scene.Ending}}</span>
+  <form method="post" action="/game/new">
+    <button type="submit" class="primary">Begin a new campaign</button>
+  </form>
+</div>
+{{else}}
 <div class="choices">
   {{range .Choices}}
   <form hx-post="/game/action" hx-target="#scene" hx-swap="outerHTML">
@@ -13,6 +21,7 @@
   </form>
   {{end}}
 </div>
+{{end}}
 {{end}}
 
 {{define "actionResponse"}}

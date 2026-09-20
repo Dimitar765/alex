@@ -4,6 +4,7 @@ package content
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
@@ -13,9 +14,12 @@ import (
 
 // Effect kinds.
 const (
-	KindStat     = "stat"
-	KindGainCard = "gain_card"
-	KindGoto     = "goto"
+	KindStat       = "stat"
+	KindGainCard   = "gain_card"
+	KindLoseCard   = "lose_card"
+	KindRemoveCard = "remove_card"
+	KindGoto       = "goto"
+	KindRandom     = "random"
 )
 
 // Stat keys usable in stat-effect deltas. The game engine maps each key to
@@ -26,20 +30,39 @@ const (
 	StatTreasury = "treasury"
 )
 
-// statKeys is the closed set accepted in Effect.Delta.
+// statKeys is the closed set accepted in Effect.Delta and Choice.RequiresStat.
 var statKeys = map[string]bool{
 	StatLegacy:   true,
 	StatArmy:     true,
 	StatTreasury: true,
 }
 
+// Endings is the closed set of ending classifications for terminal scenes.
+// The values drive the UI badge and its styling.
+var Endings = map[string]bool{
+	"triumph": true,
+	"legacy":  true,
+	"settle":  true,
+	"defeat":  true,
+	"death":   true,
+}
+
+// Outcome is one weighted branch of a random effect. Weight is relative
+// likelihood and must be at least 1.
+type Outcome struct {
+	Weight  int      `json:"weight"`
+	Effects []Effect `json:"effects"`
+}
+
 // Effect is one game-rule step. Kind selects which other field is used:
-// stat -> Delta, gain_card -> CardID, goto -> Next.
+// stat -> Delta, gain_card/lose_card/remove_card -> CardID, goto -> Next,
+// random -> Outcomes.
 type Effect struct {
-	Kind   string         `json:"kind"`
-	CardID string         `json:"cardId,omitempty"`
-	Delta  map[string]int `json:"delta,omitempty"`
-	Next   string         `json:"next,omitempty"`
+	Kind     string         `json:"kind"`
+	CardID   string         `json:"cardId,omitempty"`
+	Delta    map[string]int `json:"delta,omitempty"`
+	Next     string         `json:"next,omitempty"`
+	Outcomes []Outcome      `json:"outcomes,omitempty"`
 }
 
 // Card is a playable card. Effects apply in declared order.
@@ -50,17 +73,23 @@ type Card struct {
 	Effects []Effect `json:"effects"`
 }
 
-// Choice is one option on a scene.
+// Choice is one option on a scene. RequiresCard and RequiresStat are
+// minimum requirements: the card must be in hand and every stat must be at
+// or above its threshold.
 type Choice struct {
-	Text         string   `json:"text"`
-	RequiresCard string   `json:"requiresCard,omitempty"`
-	Effects      []Effect `json:"effects"`
+	Text         string         `json:"text"`
+	RequiresCard string         `json:"requiresCard,omitempty"`
+	RequiresStat map[string]int `json:"requiresStat,omitempty"`
+	Effects      []Effect       `json:"effects"`
 }
 
-// Scene is one narrative location with its choices.
+// Scene is one narrative location with its choices. A scene with a
+// non-empty Ending is terminal: it renders the run summary instead of
+// choices and must declare no choices.
 type Scene struct {
 	ID      string   `json:"id"`
 	Text    string   `json:"text"`
+	Ending  string   `json:"ending,omitempty"`
 	Choices []Choice `json:"choices"`
 }
 
@@ -127,13 +156,25 @@ func Load(fsys fs.FS) (*Library, error) {
 		}
 	}
 	for _, sc := range scenes {
-		if len(sc.Choices) == 0 {
+		if sc.Ending != "" {
+			if !Endings[sc.Ending] {
+				problemf("scene %q: unknown ending %q", sc.ID, sc.Ending)
+			}
+			if len(sc.Choices) != 0 {
+				problemf("ending scene %q must have no choices", sc.ID)
+			}
+		} else if len(sc.Choices) == 0 {
 			problemf("scene %q has no choices (dead end)", sc.ID)
 		}
 		for i, ch := range sc.Choices {
 			if ch.RequiresCard != "" {
 				if _, ok := lib.Cards[ch.RequiresCard]; !ok {
 					problemf("scene %q choice %d: requires unknown card %q", sc.ID, i, ch.RequiresCard)
+				}
+			}
+			for _, k := range slices.Sorted(maps.Keys(ch.RequiresStat)) {
+				if !statKeys[k] {
+					problemf("scene %q choice %d: requiresStat with unknown stat %q", sc.ID, i, k)
 				}
 			}
 			for j, e := range ch.Effects {
@@ -145,6 +186,10 @@ func Load(fsys fs.FS) (*Library, error) {
 	}
 	if _, ok := lib.Scenes["title"]; !ok {
 		problemf(`no "title" scene`)
+	} else {
+		for id := range unreachable(lib, cards) {
+			problemf("scene %q is unreachable from title", id)
+		}
 	}
 
 	if len(probs) > 0 {
@@ -164,18 +209,87 @@ func validateEffect(e Effect, lib *Library) error {
 				return fmt.Errorf("stat effect with unknown stat %q", k)
 			}
 		}
-	case KindGainCard:
+	case KindGainCard, KindLoseCard, KindRemoveCard:
 		if _, ok := lib.Cards[e.CardID]; !ok {
-			return fmt.Errorf("gain_card references unknown card %q", e.CardID)
+			return fmt.Errorf("%s references unknown card %q", e.Kind, e.CardID)
 		}
 	case KindGoto:
 		if _, ok := lib.Scenes[e.Next]; !ok {
 			return fmt.Errorf("goto references unknown scene %q", e.Next)
 		}
+	case KindRandom:
+		if len(e.Outcomes) == 0 {
+			return fmt.Errorf("random effect with no outcomes")
+		}
+		var errs []error
+		for i, o := range e.Outcomes {
+			if o.Weight < 1 {
+				errs = append(errs, fmt.Errorf("random outcome %d: weight must be >= 1", i))
+				continue
+			}
+			for j, sub := range o.Effects {
+				if err := validateEffect(sub, lib); err != nil {
+					errs = append(errs, fmt.Errorf("random outcome %d effect %d: %w", i, j, err))
+				}
+			}
+		}
+		return errors.Join(errs...)
 	default:
 		return fmt.Errorf("unknown kind %q", e.Kind)
 	}
 	return nil
+}
+
+// gotoTargets adds every scene id referenced by effects, recursing through
+// random outcomes, to out.
+func gotoTargets(effects []Effect, out map[string]bool) {
+	for _, e := range effects {
+		switch e.Kind {
+		case KindGoto:
+			out[e.Next] = true
+		case KindRandom:
+			for _, o := range e.Outcomes {
+				gotoTargets(o.Effects, out)
+			}
+		}
+	}
+}
+
+// unreachable returns the set of scenes that cannot be reached from title.
+// Edges are scene choices; card effects may be played from any scene, so
+// their goto targets count as edges from everywhere.
+func unreachable(lib *Library, cards []Card) map[string]bool {
+	cardEdges := map[string]bool{}
+	for _, c := range cards {
+		gotoTargets(c.Effects, cardEdges)
+	}
+	reached := map[string]bool{}
+	queue := []string{"title"}
+	for len(queue) > 0 {
+		id := queue[0]
+		queue = queue[1:]
+		if reached[id] {
+			continue
+		}
+		reached[id] = true
+		next := map[string]bool{}
+		for _, ch := range lib.Scenes[id].Choices {
+			gotoTargets(ch.Effects, next)
+		}
+		maps.Copy(next, cardEdges)
+		for t := range next {
+			if !reached[t] {
+				queue = append(queue, t)
+			}
+		}
+	}
+	unreached := map[string]bool{}
+	for id := range lib.Scenes {
+		if !reached[id] {
+			unreached[id] = true
+		}
+	}
+	return unreached
 }
 
 func decode[T any](fsys fs.FS, name string, v *T) error {

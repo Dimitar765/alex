@@ -15,11 +15,16 @@ import (
 
 var testContent = fstest.MapFS{
 	"cards.json": &fstest.MapFile{Data: []byte(`[
-      {"id":"phalanx","name":"Phalanx","text":"A wall of sarissas.","effects":[{"kind":"stat","delta":{"army":2}}]}
+      {"id":"phalanx","name":"Phalanx","text":"A wall of sarissas.","effects":[{"kind":"stat","delta":{"army":2}}]},
+      {"id":"decree","name":"Royal Decree","text":"A seal, a scribble.","effects":[{"kind":"stat","delta":{"treasury":3}}]}
     ]`)},
 	"scenes.json": &fstest.MapFile{Data: []byte(`[
       {"id":"title","text":"You stand at the Hellespont.","choices":[{"text":"March out","effects":[{"kind":"goto","next":"field"}]}]},
-      {"id":"field","text":"An open field awaits.","choices":[{"text":"Return to the coast","effects":[{"kind":"goto","next":"title"}]}]}
+      {"id":"field","text":"An open field awaits.","choices":[
+        {"text":"Return to the coast","effects":[{"kind":"goto","next":"title"}]},
+        {"text":"Claim the vault of the treasury","requiresStat":{"treasury":3},"effects":[{"kind":"goto","next":"end_demo"}]}
+      ]},
+      {"id":"end_demo","text":"The world is yours.","ending":"triumph"}
     ]`)},
 }
 
@@ -178,6 +183,62 @@ func TestFailedActionDoesNotLoseCards(t *testing.T) {
 	b := readBody(t, get(t, c, base+"/"))
 	if !strings.Contains(b, "Phalanx") {
 		t.Fatal("failed action must not remove cards from the hand")
+	}
+}
+
+func TestStatGatedChoiceShowsRequirementUntilMet(t *testing.T) {
+	c, base := newTestClient(t)
+	startGame(t, c, base)
+
+	// Before: on the field scene the gated choice is disabled and names
+	// its requirement.
+	postForm(t, c, base+"/game/action", url.Values{"choice": {"0"}}) // title → field
+	b := readBody(t, get(t, c, base+"/"))
+	if !strings.Contains(b, "Claim the vault") {
+		t.Fatalf("field scene missing gated choice, got: %s", b)
+	}
+	if !strings.Contains(b, `disabled title="Requires Treasury 3"`) {
+		t.Fatalf("gated choice must show its requirement, got: %s", b)
+	}
+
+	// After playing a treasury card, the action partial re-renders the
+	// choice without a requirement tooltip.
+	resp := postForm(t, c, base+"/game/action", url.Values{"card": {"decree"}})
+	b = readBody(t, resp)
+	if strings.Contains(b, `title="Requires`) {
+		t.Fatalf("requirement tooltip must disappear once met, got: %s", b)
+	}
+}
+
+func TestEndingFlowRendersSummaryAndRefusesFurtherActions(t *testing.T) {
+	c, base := newTestClient(t)
+	startGame(t, c, base)
+	postForm(t, c, base+"/game/action", url.Values{"card": {"decree"}})
+	postForm(t, c, base+"/game/action", url.Values{"choice": {"0"}}) // title → field
+
+	resp := postForm(t, c, base+"/game/action", url.Values{"choice": {"1"}}) // claim vault
+	b := readBody(t, resp)
+	for _, want := range []string{
+		"The world is yours.",
+		`<span class="ending-badge triumph">triumph</span>`,
+		"Begin a new campaign",
+	} {
+		if !strings.Contains(b, want) {
+			t.Fatalf("ending summary missing %q, got: %s", want, b)
+		}
+	}
+	if strings.Contains(b, "card-btn") {
+		t.Fatal("hand must be hidden on ending scenes")
+	}
+
+	// Post-ending actions are refused and leave the ending scene in place.
+	resp = postForm(t, c, base+"/game/action", url.Values{"card": {"phalanx"}})
+	b = readBody(t, resp)
+	if !strings.Contains(b, "campaign is over") {
+		t.Fatalf("post-ending card play must be refused, got: %s", b)
+	}
+	if !strings.Contains(b, "The world is yours.") {
+		t.Fatal("refused action must keep the ending scene")
 	}
 }
 

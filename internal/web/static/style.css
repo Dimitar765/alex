@@ -60,6 +60,30 @@ main {
 
 .choices { display: grid; gap: 0.5rem; }
 
+.ending {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.ending-badge {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  padding: 0.25rem 0.65rem;
+  border: 1px solid;
+  border-radius: 999px;
+}
+
+.ending-badge.triumph { color: var(--gold); border-color: var(--gold); }
+.ending-badge.legacy  { color: #d8c27a; border-color: #d8c27a; }
+.ending-badge.settle  { color: #8fae7a; border-color: #8fae7a; }
+.ending-badge.defeat  { color: #b06a5a; border-color: #b06a5a; }
+.ending-badge.death   { color: #c25b4e; border-color: #c25b4e; }
+
 button {
   background: #2e2822;
   border: 1px solid var(--gold);

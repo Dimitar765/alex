@@ -34,5 +34,53 @@
     "name": "Wedge Formation",
     "text": "A spearhead of horse and foot, driven where the enemy line is thinnest.",
     "effects": [{ "kind": "stat", "delta": { "army": 1, "legacy": 1 } }]
+  },
+  {
+    "id": "hypaspists",
+    "name": "Shield-Bearers",
+    "text": "The hypaspists: picked men who hold the seam between horse and pike.",
+    "effects": [{ "kind": "stat", "delta": { "army": 1, "legacy": 1 } }]
+  },
+  {
+    "id": "agrianians",
+    "name": "Agrianian Javelins",
+    "text": "Hillmen who run at walls and rivers as if they were neither.",
+    "effects": [{ "kind": "stat", "delta": { "army": 2 } }]
+  },
+  {
+    "id": "war_chest",
+    "name": "Persian War Chest",
+    "text": "Captured gold from the satraps' tents, still warm from their greed.",
+    "effects": [{ "kind": "stat", "delta": { "treasury": 2 } }]
+  },
+  {
+    "id": "royal_road",
+    "name": "Persian Royal Road",
+    "text": "A thousand miles of post-horses and stone bridges, yours to command.",
+    "effects": [{ "kind": "stat", "delta": { "treasury": 1, "army": 1 } }]
+  },
+  {
+    "id": "siwa_oracle",
+    "name": "Blessing of Ammon",
+    "text": "The priest greets you as son of the god. Whether you believe it, others now do.",
+    "effects": [{ "kind": "stat", "delta": { "legacy": 2 } }]
+  },
+  {
+    "id": "nearchus_fleet",
+    "name": "Nearchus's Fleet",
+    "text": "Hulls crawling the coast like water-beetles, carrying your war and your name.",
+    "effects": [{ "kind": "stat", "delta": { "legacy": 1, "treasury": -1 } }]
+  },
+  {
+    "id": "roxane",
+    "name": "Marriage to Roxane",
+    "text": "The hill princess. Your generals scowl; the clans of Bactria kneel.",
+    "effects": [{ "kind": "stat", "delta": { "legacy": 1, "treasury": 1 } }]
+  },
+  {
+    "id": "elephant_corps",
+    "name": "Elephant Corps",
+    "text": "Porus's grey giants, swaying decks of archers between their tusks.",
+    "effects": [{ "kind": "stat", "delta": { "army": 2, "treasury": -1 } }]
   }
 ]
