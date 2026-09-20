@@ -67,6 +67,21 @@ type titleView struct {
 	Endings   []endingTile
 }
 
+// endingCount is one line of the Chronicle's ending breakdown.
+type endingCount struct {
+	Class string
+	Count int
+}
+
+// statsView is the template data for the Chronicle page.
+type statsView struct {
+	Runs     []RunSummary // newest first
+	Endings  []endingCount
+	AvgTurns float64
+	AvgCards float64
+	Best     *RunSummary
+}
+
 // gallery builds the endings tiles over content.EndingOrder.
 func gallery(found map[string]bool) []endingTile {
 	tiles := make([]endingTile, 0, len(content.EndingOrder))
@@ -102,6 +117,34 @@ func (s *Server) newGame(w http.ResponseWriter, r *http.Request, session string)
 		return
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// stats renders the Chronicle: the session's completed-run history.
+func (s *Server) stats(w http.ResponseWriter, r *http.Request, session string) {
+	runs := s.store.History(session)
+	v := statsView{Runs: slices.Clone(runs)}
+	slices.Reverse(v.Runs) // newest first
+	counts := map[string]int{}
+	var turns, cards int
+	for _, run := range runs {
+		counts[run.Ending]++
+		turns += run.Turns
+		cards += run.CardsPlayed
+		if v.Best == nil || run.Stats.Legacy > v.Best.Stats.Legacy {
+			b := run
+			v.Best = &b
+		}
+	}
+	if n := len(runs); n > 0 {
+		v.AvgTurns = float64(turns) / float64(n)
+		v.AvgCards = float64(cards) / float64(n)
+	}
+	for _, class := range content.EndingOrder {
+		if counts[class] > 0 {
+			v.Endings = append(v.Endings, endingCount{Class: class, Count: counts[class]})
+		}
+	}
+	s.renderPage(w, "stats.html", v)
 }
 
 func (s *Server) action(w http.ResponseWriter, r *http.Request, session string) {

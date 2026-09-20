@@ -3,8 +3,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"goGame/internal/content"
@@ -34,8 +40,24 @@ func main() {
 	go sweepDaily(store)
 	srv := web.New(store)
 	srv.Addr = *addr
+
+	// Graceful shutdown: finish in-flight requests, then exit.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	go func() {
+		<-ctx.Done()
+		log.Println("shutting down")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			log.Printf("shutdown: %v", err)
+		}
+	}()
+
 	log.Printf("gogame listening on http://%s", *addr)
-	log.Fatal(srv.ListenAndServe())
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatal(err)
+	}
 }
 
 func sweepStale(store *web.Store) {

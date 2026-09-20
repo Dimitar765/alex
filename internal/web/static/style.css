@@ -25,6 +25,21 @@ header {
   border-bottom: 1px solid var(--line);
 }
 
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.header-nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+}
+
+.header-nav a:hover { color: var(--gold); }
+
 header h1 {
   margin: 0;
   font-variant: small-caps;
@@ -59,6 +74,55 @@ main {
 }
 
 .choices { display: grid; gap: 0.5rem; }
+
+.keys-hint {
+  display: none;
+  margin: 0.6rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-family: ui-monospace, Menlo, monospace;
+}
+
+body.js .keys-hint { display: block; }
+
+/* Chronicle table */
+.runs {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}
+
+.runs th, .runs td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.runs th {
+  color: var(--muted);
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  font-weight: normal;
+}
+
+.runs td:not(:first-child), .runs th:not(:first-child) {
+  font-family: ui-monospace, Menlo, monospace;
+}
+
+.ending-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  align-items: center;
+}
+
+.ending-breakdown .count {
+  font-family: ui-monospace, Menlo, monospace;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
 
 .ending {
   display: flex;

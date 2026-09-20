@@ -8,8 +8,10 @@ import (
 	"encoding/hex"
 	"html/template"
 	"io/fs"
+	"log"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -43,15 +45,42 @@ func New(store *Store) *http.Server {
 
 	base := template.Must(template.New("layout.html").ParseFS(templates, "layout.html"))
 	s.pages["title.html"] = withPage(base, templates, "title.html", "_gallery.html")
+	s.pages["stats.html"] = withPage(base, templates, "stats.html")
 	s.pages["game.html"] = withPage(base, templates, "game.html", "_scene.html", "_hand.html", "_log.html", "_gallery.html", "_deck.html")
 	s.actionT = template.Must(template.New("action.html").ParseFS(templates, "_scene.html", "_hand.html", "_log.html", "_gallery.html", "_deck.html"))
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(static)))
 	mux.HandleFunc("GET /{$}", s.withSession(s.home))
+	mux.HandleFunc("GET /stats", s.withSession(s.stats))
 	mux.HandleFunc("POST /game/new", s.withSession(s.newGame))
 	mux.HandleFunc("POST /game/action", s.withSession(s.action))
-	return &http.Server{Handler: mux}
+	return &http.Server{Handler: withLogging(mux)}
+}
+
+// statusRecorder captures the response status for request logging.
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *statusRecorder) WriteHeader(code int) {
+	r.status = code
+	r.ResponseWriter.WriteHeader(code)
+}
+
+// withLogging logs non-static requests with status and duration.
+func withLogging(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/static/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		start := time.Now()
+		next.ServeHTTP(rec, r)
+		log.Printf("%s %s -> %d (%s)", r.Method, r.URL.Path, rec.status, time.Since(start).Round(time.Millisecond))
+	})
 }
 
 func mustSub(fsys fs.FS, name string) fs.FS {

@@ -415,6 +415,48 @@ func TestSessionCookieHasExpiry(t *testing.T) {
 	}
 }
 
+func TestChronicleEmptyThenPopulated(t *testing.T) {
+	c, base := newTestClient(t)
+
+	// Fresh session: friendly empty state, reachable from the header.
+	b := readBody(t, get(t, c, base+"/stats"))
+	if !strings.Contains(b, "No campaigns have ended yet") {
+		t.Fatalf("empty chronicle missing empty state, got: %s", b)
+	}
+	b = readBody(t, get(t, c, base+"/"))
+	if !strings.Contains(b, `href="/stats"`) || !strings.Contains(b, "Chronicle") {
+		t.Fatal("header must link to the chronicle")
+	}
+
+	// Complete a run; the chronicle summarizes and tabulates it.
+	startGame(t, c, base)
+	postAction(t, c, base, url.Values{"card": {"decree"}})
+	postAction(t, c, base, url.Values{"choice": {"0"}})
+	postAction(t, c, base, url.Values{"choice": {"1"}}) // → ending, run recorded
+
+	b = readBody(t, get(t, c, base+"/stats"))
+	for _, want := range []string{
+		"1 campaign completed",
+		`<span class="ending-badge triumph">triumph</span><span class="count">×1</span>`,
+		"Best campaign: triumph",
+		`<table class="runs">`,
+	} {
+		if !strings.Contains(b, want) {
+			t.Fatalf("chronicle missing %q, got: %s", want, b)
+		}
+	}
+}
+
+func TestLayoutLoadsEnhancementScripts(t *testing.T) {
+	c, base := newTestClient(t)
+	b := readBody(t, get(t, c, base+"/"))
+	for _, want := range []string{`src="/static/htmx.min.js"`, `src="/static/keys.js"`} {
+		if !strings.Contains(b, want) {
+			t.Fatalf("layout missing %s", want)
+		}
+	}
+}
+
 func TestActionWithoutStateRedirectsHome(t *testing.T) {
 	c, base := newTestClient(t)
 	get(t, c, base+"/") // establish session cookie only

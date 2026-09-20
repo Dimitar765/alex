@@ -15,8 +15,11 @@ You march from Pella to Babylon through scenes with 2–3 choices. Three
 stats track your run — **Legacy** (fame), **Army** (strength), **Treasury**
 (gold). Choices may require stats or cards; some consume their card, and
 battle choices resolve through weighted random outcomes. Cards in hand can
-be played for their effects; powerful cards cost Treasury. The run ends in
-one of five endings: triumph, legacy, settle, or two flavors of defeat.
+be played for their effects; powerful cards cost Treasury. Runs start with
+a small Macedonian core deck that grows regionally as the campaign reaches
+new lands. The run ends in one of five endings: triumph, legacy, settle,
+or two flavors of defeat. Keys 1–3 take choices (with JavaScript); the
+**Chronicle** page tracks your campaign history.
 
 ## Architecture
 

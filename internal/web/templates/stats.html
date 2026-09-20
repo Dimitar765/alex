@@ -1,0 +1,32 @@
+{{define "content"}}
+<section id="scene">
+  <h2>Chronicle</h2>
+  {{if .Runs}}
+  <p class="campaigns">{{len .Runs}} campaign{{if gt (len .Runs) 1}}s{{end}} completed · avg {{printf "%.1f" .AvgTurns}} turns · avg {{printf "%.1f" .AvgCards}} cards played</p>
+  <div class="ending-breakdown">
+    {{range .Endings}}
+    <span class="ending-badge {{.Class}}">{{.Class}}</span><span class="count">×{{.Count}}</span>
+    {{end}}
+  </div>
+  {{with .Best}}
+  <p class="run-summary">Best campaign: {{.Ending}} with legacy {{.Stats.Legacy}} in {{.Turns}} turns</p>
+  {{end}}
+  <table class="runs">
+    <tr><th>when</th><th>ending</th><th>legacy</th><th>army</th><th>treasury</th><th>turns</th><th>cards</th></tr>
+    {{range .Runs}}
+    <tr>
+      <td>{{.Date.Format "Jan 2, 2006"}}</td>
+      <td><span class="ending-badge {{.Ending}}">{{.Ending}}</span></td>
+      <td>{{.Stats.Legacy}}</td>
+      <td>{{.Stats.Army}}</td>
+      <td>{{.Stats.Treasury}}</td>
+      <td>{{.Turns}}</td>
+      <td>{{.CardsPlayed}}</td>
+    </tr>
+    {{end}}
+  </table>
+  {{else}}
+  <p class="scene-text">No campaigns have ended yet. <a href="/">Begin the campaign</a>.</p>
+  {{end}}
+</section>
+{{end}}
