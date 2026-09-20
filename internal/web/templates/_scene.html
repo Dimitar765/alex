@@ -31,5 +31,5 @@
 <section id="scene" {{if .Fate}}data-fate="1"{{end}}>{{template "sceneInner" .}}</section>
 <section id="hand" class="hand" data-deck="{{.DeckN}}" hx-swap-oob="true">{{template "handInner" .}}</section>
 <section id="deck" hx-swap-oob="true">{{template "deckInner" .}}</section>
-<section id="log" hx-swap-oob="true">{{template "logInner" .}}</section>
+<section id="log" hx-swap-oob="true" {{if not .Log}}hidden{{end}}>{{template "logInner" .}}</section>
 {{end}}

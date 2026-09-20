@@ -127,6 +127,9 @@ main {
 
 .choices { display: grid; gap: 0.5rem; }
 
+/* Every choice spans the scene panel — wrapped or single-line alike. */
+.choices button { width: 100%; }
+
 .keys-hint {
   display: none;
   margin: 0.6rem 0 0;

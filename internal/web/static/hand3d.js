@@ -270,10 +270,13 @@
     return m;
   }
 
-  // Deck stack (visual only; counts come from data-deck).
+  // Deck stack (visual only; counts come from data-deck). Parked just
+  // off the right edge of the frame — the pile itself is never seen,
+  // only its effects (deals, scout peek, shuffle riffle).
   var deckGroup = new THREE.Group();
-  deckGroup.position.set(2.55, 0.6, -1.7);
-  deckGroup.rotation.x = -0.18;
+  deckGroup.position.set(5.5, -1.32, 2.5);
+  deckGroup.rotation.x = Math.PI / 2 - 0.22;
+  deckGroup.rotation.z = 0.3;
   scene.add(deckGroup);
   var deckCards = [];
 
@@ -281,10 +284,10 @@
     var n = Math.max(0, Math.min(count, 8));
     while (deckCards.length < n) {
       var d = new THREE.Mesh(geometry, backMaterial);
-      d.scale.setScalar(0.82);
+      d.scale.setScalar(0.5);
       var i = deckCards.length;
       d.position.set((i % 2) * 0.02, i * 0.045, ((i % 3) - 1) * 0.015);
-      d.rotation.y = (Math.random() - 0.5) * 0.08;
+      d.rotation.y = (Math.random() - 0.5) * 0.16;
       deckGroup.add(d);
       deckCards.push(d);
     }
@@ -439,7 +442,9 @@
     });
     toAdd.forEach(function (c, i) {
       var m = makeCard(c);
-      m.position.set(deckGroup.position.x - 0.4, 0.2 + i * 0.05, -1.2);
+      // Spawn just off the right frame edge — where the pile sits — so
+      // the deal flies into view instead of teleporting in.
+      m.position.set(4.2, -0.9 + i * 0.05, deckGroup.position.z);
       m.rotation.set(-0.3, -0.45, 0.1);
       meshes.push(m);
       // Deal: staggered flight from the deck into the fan.
@@ -472,11 +477,23 @@
     applyTint();
   }
 
-  // Unaffordable cards sit darker; focus mirrors from the DOM buttons.
+  // Unaffordable cards keep their place in the fan but sit dimmed —
+  // shrinking them read as a mis-dealt card, not a disabled one.
+  // Focus (keyboard / gamepad / hover) brightens and grows slightly.
+  // Only the face material is per-card; edges and backs are shared.
   function applyTint(focusedId) {
     meshes.forEach(function (m) {
-      var target = focusedId && m.userData.id === focusedId ? 1.22 : (m.userData.playable ? 1.0 : 0.62);
-      m.scale.setScalar(0.96 * target);
+      var face = Array.isArray(m.material) ? m.material[4] : m.material;
+      if (focusedId && m.userData.id === focusedId) {
+        if (face && face.color) { face.color.setScalar(1.25); }
+        m.scale.setScalar(0.96 * 1.04);
+      } else if (m.userData.playable) {
+        if (face && face.color) { face.color.setScalar(1); }
+        m.scale.setScalar(0.96);
+      } else {
+        if (face && face.color) { face.color.setScalar(0.45); }
+        m.scale.setScalar(0.96);
+      }
     });
   }
 
@@ -569,15 +586,24 @@
     if (reduced) { return; }
     for (var i = 0; i < 6; i++) {
       (function (i) {
-        var d = new THREE.Mesh(geometry, backMaterial);
-        d.scale.setScalar(0.82);
+        // Own material per card: the opacity fade must not touch the
+        // shared back material other deck cards still use.
+        var mtl = backMaterial.clone();
+        mtl.transparent = true;
+        mtl.opacity = 1;
+        var d = new THREE.Mesh(geometry, mtl);
+        d.scale.setScalar(0.5);
         d.position.copy(deckGroup.position);
         d.position.y += 0.2;
+        d.rotation.x = deckGroup.rotation.x;
+        d.rotation.z = deckGroup.rotation.z;
         scene.add(d);
+        // The pile sits off-frame, so the burst flies leftward into the
+        // visible table before fading.
         tween(d, {
-          x: deckGroup.position.x + (Math.random() - 0.5) * 3,
+          x: 0.5 + Math.random() * 3,
           y: 0.9 + Math.random() * 0.8,
-          z: deckGroup.position.z + (Math.random() - 0.5) * 2
+          z: (Math.random() - 0.5) * 2
         }, 0.4);
         tween(d, { rotation: (Math.random() - 0.5) * 2.4 }, 0.4, { axis: "y" });
         tween(d, { opacity: 0 }, 0.36, { onDone: function () { scene.remove(d); } });
@@ -589,15 +615,47 @@
     });
   }
 
+  // The pile is off-frame, so scout shows a single face-down card
+  // peeking up from the table's right edge instead of lifting the
+  // pile's top card.
+  // The pile is off-frame, so scout shows a single face-down card
+  // tilted up from the table's right edge — clearly a deck card:
+  // below the fan line, brighter than the pile, then gone.
   function scoutPulse() {
-    var top = deckCards[deckCards.length - 1];
-    if (!top) { return; }
-    tween(top, { y: top.position.y + 0.22 }, 0.18, {
-      onDone: function () { tween(top, { y: top.position.y }, 0.25); }
+    if (reduced || !deckCards.length) { return; }
+    var mtl = backMaterial.clone();
+    mtl.color.setScalar(1.5);
+    mtl.transparent = true;
+    mtl.opacity = 1;
+    var d = new THREE.Mesh(geometry, mtl);
+    d.scale.setScalar(0.7);
+    d.position.set(2.45, -1.2, 1.9);
+    d.rotation.set(-0.9, 0.3, 0.15);
+    scene.add(d);
+    tween(d, { y: -0.95 }, 0.22, {
+      onDone: function () {
+        tween(d, { y: -1.2 }, 0.28, {
+          onDone: function () { scene.remove(d); }
+        });
+      }
     });
   }
 
   // --- resize and loop -------------------------------------------------------
+  // Dolly the camera out just enough that the fanned hand stays inside
+  // the frame at any canvas aspect: narrow tables pull the camera back,
+  // wide ones keep the close-up base framing. (The deck pile sits low
+  // enough to fit at the base framing in every aspect.)
+  function fitZ(aspect) {
+    var t = Math.tan(camera.fov * Math.PI / 360);
+    function zFor(px, py, pz, half) {
+      var d = half / (t * aspect);
+      var vy = camBase.y - py;
+      return pz + Math.sqrt(Math.max(d * d - vy * vy, 0.25));
+    }
+    return Math.min(Math.max(camBase.z, zFor(0, 0, 0.6, 3.5)), 14);
+  }
+
   function resize() {
     var w = host.clientWidth;
     var h = document.getElementById("hand") ? document.getElementById("hand").offsetHeight : 336;
@@ -606,6 +664,8 @@
     canvas.style.width = w + "px";
     canvas.style.height = h + "px";
     camera.aspect = w / h;
+    camBase.z = fitZ(camera.aspect);
+    camera.position.set(camBase.x, camBase.y, camBase.z);
     camera.updateProjectionMatrix();
   }
   if (window.ResizeObserver) {

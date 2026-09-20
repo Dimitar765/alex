@@ -50,7 +50,10 @@ func New(store *Store) *http.Server {
 	s.actionT = template.Must(template.New("action.html").ParseFS(templates, "_scene.html", "_hand.html", "_log.html", "_gallery.html", "_deck.html"))
 
 	mux := http.NewServeMux()
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(static)))
+	// no-cache keeps browsers honest during development: they must
+	// revalidate static assets (Last-Modified/304) instead of serving
+	// stale CSS/JS from an earlier build.
+	mux.Handle("GET /static/", noCache(http.StripPrefix("/static/", http.FileServerFS(static))))
 	mux.HandleFunc("GET /{$}", s.withSession(s.home))
 	mux.HandleFunc("GET /stats", s.withSession(s.stats))
 	mux.HandleFunc("POST /game/new", s.withSession(s.newGame))
@@ -80,6 +83,14 @@ func withLogging(next http.Handler) http.Handler {
 		start := time.Now()
 		next.ServeHTTP(rec, r)
 		log.Printf("%s %s -> %d (%s)", r.Method, r.URL.Path, rec.status, time.Since(start).Round(time.Millisecond))
+	})
+}
+
+// noCache forces revalidation of static assets so edits show up on reload.
+func noCache(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		next.ServeHTTP(w, r)
 	})
 }
 

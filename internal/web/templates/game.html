@@ -6,7 +6,7 @@
   </aside>
   <div class="play-side">
     <section id="scene" {{if .Fate}}data-fate="1"{{end}}>{{template "sceneInner" .}}</section>
-    <section id="log">{{template "logInner" .}}</section>
+    <section id="log" {{if not .Log}}hidden{{end}}>{{template "logInner" .}}</section>
   </div>
 </div>
 {{end}}
