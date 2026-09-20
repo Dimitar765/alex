@@ -26,6 +26,7 @@ const (
 type Game struct {
 	theme *Theme
 	model *app.Model
+	audio *audioSys
 	stack []screen
 
 	// Per-tick input snapshot, refreshed in Update before screens run.
@@ -56,10 +57,16 @@ func New() (*Game, error) {
 	g := &Game{
 		theme:       theme,
 		model:       app.NewModel(lib, dir),
+		audio:       newAudio(),
 		keysPressed: map[ebiten.Key]bool{},
 	}
 	g.pushScreen(&titleScreen{})
 	return g, nil
+}
+
+// sfx plays a named cue unless audio is unavailable or muted.
+func (g *Game) sfx(name string) {
+	g.audio.Play(name)
 }
 
 // Update advances input, then the top screen by one tick.
@@ -71,6 +78,9 @@ func (g *Game) Update() error {
 	g.last = now
 
 	g.refreshInput()
+	if g.keysPressed[ebiten.KeyM] {
+		g.audio.muted = !g.audio.muted
+	}
 	if len(g.stack) == 0 {
 		return ebiten.Termination
 	}
@@ -80,13 +90,13 @@ func (g *Game) Update() error {
 // consumeEffects routes an action's FX events to the active screen.
 func (g *Game) consumeEffects(r app.Result) {
 	if s, ok := g.screen().(fxSink); ok && len(r.Effects) > 0 {
-		s.consumeFX(r.Effects)
+		s.consumeFX(g, r.Effects)
 	}
 }
 
 // fxSink is implemented by screens that animate action consequences.
 type fxSink interface {
-	consumeFX(effects []app.Effect)
+	consumeFX(g *Game, effects []app.Effect)
 }
 
 // Layout returns the fixed design-space size; Ebitengine scales the

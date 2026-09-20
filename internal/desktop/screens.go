@@ -234,13 +234,18 @@ func (s *tableScreen) update(g *Game) error {
 		switch {
 		case s.focus < n:
 			if r := g.model.PlayCard(v.Hand[s.focus].ID); r.Err == nil {
+				g.sfx("card")
 				g.consumeEffects(r)
 				s.focus = -1
+			} else {
+				g.sfx("error")
 			}
 		case s.focus == n:
 			g.model.Scout()
+			g.sfx("scout")
 		default:
 			g.model.Shuffle()
+			g.sfx("shuffle")
 		}
 	}
 	if s.focus > targets {
@@ -327,9 +332,11 @@ func (s *tableScreen) draw(g *Game, dst *ebiten.Image) {
 		}
 		if scout.clicked(g) {
 			g.model.Scout()
+			g.sfx("scout")
 		}
 		if shuffle.clicked(g) {
 			g.model.Shuffle()
+			g.sfx("shuffle")
 		}
 		scout.draw(g, target)
 		shuffle.draw(g, target)
@@ -375,7 +382,7 @@ func mod2pi(x float64) float64 {
 }
 
 // consumeFX turns action effects into ghosts, floats, sparks, and shakes.
-func (s *tableScreen) consumeFX(effects []app.Effect) {
+func (s *tableScreen) consumeFX(g *Game, effects []app.Effect) {
 	l := newLayout()
 	for _, e := range effects {
 		switch e.Kind {
@@ -409,6 +416,11 @@ func (s *tableScreen) consumeFX(effects []app.Effect) {
 				s.shakeT = 0.3
 			}
 		case app.EffectEnding:
+			if e.Text == "defeat" || e.Text == "death" {
+				g.sfx("defeat")
+			} else {
+				g.sfx("victory")
+			}
 			for i := 0; i < 24; i++ {
 				s.fxParts = append(s.fxParts, particle{
 					x:  l.play.X + l.play.W/2 + randSpread(180),
@@ -568,7 +580,10 @@ func (s *tableScreen) drawTable(g *Game, dst *ebiten.Image, v *app.View) {
 			(c.Available && g.keysPressed[digitKey(c.Index)]) {
 			if c.Available {
 				if r := g.model.Choose(c.Index); r.Err == nil {
+					g.sfx("choice")
 					g.consumeEffects(r)
+				} else {
+					g.sfx("error")
 				}
 			}
 		}
