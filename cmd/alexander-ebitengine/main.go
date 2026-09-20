@@ -6,15 +6,19 @@ package main
 import (
 	"log"
 
-	"goGame/internal/desktop"
-
 	"github.com/hajimehoshi/ebiten/v2"
+
+	"goGame/internal/desktop"
 )
 
 func main() {
+	g, err := desktop.New()
+	if err != nil {
+		log.Fatal(err)
+	}
 	ebiten.SetWindowSize(desktop.ScreenW, desktop.ScreenH)
 	ebiten.SetWindowTitle("Alexander — a card adventure")
-	if err := ebiten.RunGame(desktop.New()); err != nil && err != ebiten.Termination {
+	if err := ebiten.RunGame(g); err != nil && err != ebiten.Termination {
 		log.Fatal(err)
 	}
 }

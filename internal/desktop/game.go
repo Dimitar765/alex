@@ -4,9 +4,13 @@
 package desktop
 
 import (
-	"image/color"
-
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
+
+	assets "goGame"
+	"goGame/internal/app"
+	"goGame/internal/content"
+	"goGame/internal/paths"
 )
 
 // Design-space dimensions; Ebitengine letterboxes the window onto them.
@@ -15,36 +19,58 @@ const (
 	ScreenH = 800
 )
 
-// Palette mirrors the web client's style.css tokens.
-var (
-	themeBackground = rgb(0x15, 0x13, 0x12) // --bg
-	themePanel      = rgb(0x21, 0x1d, 0x1a) // --panel
-	themeLine       = rgb(0x35, 0x30, 0x2a) // --line
-	themeGold       = rgb(0xc9, 0xa2, 0x27) // --gold
-	themeInk        = rgb(0xe8, 0xe0, 0xd0) // --ink
-	themeMuted      = rgb(0x9a, 0x8f, 0x7d) // --muted
-)
+// Game is the root Ebitengine state: the screen stack over the shared
+// view-model, plus per-tick input state the screens consume.
+type Game struct {
+	theme *Theme
+	model *app.Model
+	stack []screen
 
-// Game is the root Ebitengine state: the current screen and shared
-// resources. Screens arrive in later phases; Phase 0 proves the shell.
-type Game struct{}
-
-// New creates the root Game.
-func New() *Game {
-	return &Game{}
+	// Per-tick input snapshot, refreshed in Update before screens run.
+	cursorX, cursorY float64
+	mouseClicked     bool
+	keysPressed      map[ebiten.Key]bool
 }
 
-// Update advances the game by one tick. No rendering happens here.
+// New builds the root game: theme, model, and the landing screen.
+func New() (*Game, error) {
+	theme, err := NewTheme()
+	if err != nil {
+		return nil, err
+	}
+	lib, err := content.Load(assets.FS())
+	if err != nil {
+		return nil, err
+	}
+	dir, err := paths.UserSavesDir()
+	if err != nil {
+		dir = "" // memory-only rather than failing to start
+	}
+	g := &Game{
+		theme:       theme,
+		model:       app.NewModel(lib, dir),
+		keysPressed: map[ebiten.Key]bool{},
+	}
+	g.pushScreen(&titleScreen{})
+	return g, nil
+}
+
+// Update advances input, then the top screen by one tick.
 func (g *Game) Update() error {
-	if ebiten.IsKeyPressed(ebiten.KeyEscape) {
+	g.refreshInput()
+	if len(g.stack) == 0 {
 		return ebiten.Termination
 	}
-	return nil
+	return g.stack[len(g.stack)-1].update(g)
 }
 
-// Draw renders the current frame.
+// Draw renders the top screen.
 func (g *Game) Draw(screen *ebiten.Image) {
-	screen.Fill(themeBackground)
+	if len(g.stack) == 0 {
+		screen.Fill(themeBackground)
+		return
+	}
+	g.stack[len(g.stack)-1].draw(g, screen)
 }
 
 // Layout returns the fixed design-space size; Ebitengine scales the
@@ -53,7 +79,35 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return ScreenW, ScreenH
 }
 
-// rgb packs 8-bit components into an opaque color.
-func rgb(r, g, b uint8) color.RGBA {
-	return color.RGBA{R: r, G: g, B: b, A: 0xff}
+// refreshInput snapshots cursor, click edge, and pressed keys for this tick.
+func (g *Game) refreshInput() {
+	cx, cy := ebiten.CursorPosition()
+	g.cursorX, g.cursorY = float64(cx), float64(cy)
+	g.mouseClicked = inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft)
+
+	clear(g.keysPressed)
+	for _, k := range inpututil.AppendPressedKeys(nil) {
+		g.keysPressed[k] = true
+	}
+}
+
+// pushScreen puts a new screen on top of the stack.
+func (g *Game) pushScreen(s screen) {
+	g.stack = append(g.stack, s)
+}
+
+// popScreen removes the top screen; an empty stack ends the program.
+func (g *Game) popScreen() {
+	if n := len(g.stack); n > 0 {
+		g.stack = g.stack[:n-1]
+	}
+}
+
+// replaceScreen swaps the top screen in place (or pushes when empty).
+func (g *Game) replaceScreen(s screen) {
+	if n := len(g.stack); n > 0 {
+		g.stack[n-1] = s
+		return
+	}
+	g.stack = append(g.stack, s)
 }
