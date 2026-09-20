@@ -43,8 +43,8 @@ func New(store *Store) *http.Server {
 
 	base := template.Must(template.New("layout.html").ParseFS(templates, "layout.html"))
 	s.pages["title.html"] = withPage(base, templates, "title.html", "_gallery.html")
-	s.pages["game.html"] = withPage(base, templates, "game.html", "_scene.html", "_hand.html", "_log.html", "_gallery.html")
-	s.actionT = template.Must(template.New("action.html").ParseFS(templates, "_scene.html", "_hand.html", "_log.html", "_gallery.html"))
+	s.pages["game.html"] = withPage(base, templates, "game.html", "_scene.html", "_hand.html", "_log.html", "_gallery.html", "_deck.html")
+	s.actionT = template.Must(template.New("action.html").ParseFS(templates, "_scene.html", "_hand.html", "_log.html", "_gallery.html", "_deck.html"))
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(static)))

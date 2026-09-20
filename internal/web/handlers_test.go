@@ -15,8 +15,8 @@ import (
 
 var testContent = fstest.MapFS{
 	"cards.json": &fstest.MapFile{Data: []byte(`[
-      {"id":"phalanx","name":"Phalanx","text":"A wall of sarissas.","cost":2,"effects":[{"kind":"stat","delta":{"army":2}}]},
-      {"id":"decree","name":"Royal Decree","text":"A seal, a scribble.","effects":[{"kind":"stat","delta":{"treasury":3}}]}
+      {"id":"phalanx","name":"Phalanx","text":"A wall of sarissas.","cost":2,"start":true,"effects":[{"kind":"stat","delta":{"army":2}}]},
+      {"id":"decree","name":"Royal Decree","text":"A seal, a scribble.","start":true,"effects":[{"kind":"stat","delta":{"treasury":3}}]}
     ]`)},
 	"scenes.json": &fstest.MapFile{Data: []byte(`[
       {"id":"title","text":"You stand at the Hellespont.","choices":[{"text":"March out","effects":[{"kind":"goto","next":"field"}]}]},
@@ -349,6 +349,28 @@ func TestConsumingChoiceSpendsCard(t *testing.T) {
 
 // A plain form post (no HX-Request header) must render a full page, not
 // the htmx fragment set — that is the no-JavaScript fallback.
+// The deck inspector renders the run's full card inventory, and scene
+// arrival grants grow it.
+func TestDeckInspectorTracksSceneGrants(t *testing.T) {
+	c, base := newTestClient(t)
+	startGame(t, c, base)
+
+	b := readBody(t, get(t, c, base+"/"))
+	if !strings.Contains(b, `<summary>Deck · 2</summary>`) {
+		t.Fatalf("deck inspector must show the 2 starting cards, got: %s", b)
+	}
+
+	// March out: arriving at field has no pool in this content, count stays.
+	postAction(t, c, base, url.Values{"choice": {"0"}})
+	b = readBody(t, get(t, c, base+"/"))
+	if !strings.Contains(b, `<summary>Deck · 2</summary>`) {
+		t.Fatalf("deck count must be stable without grants, got: %s", b)
+	}
+	if !strings.Contains(b, `class="deck-count">×1`) {
+		t.Fatalf("deck list must show per-card counts, got: %s", b)
+	}
+}
+
 func TestActionWithoutJSReturnsFullPage(t *testing.T) {
 	c, base := newTestClient(t)
 	startGame(t, c, base)

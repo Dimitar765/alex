@@ -28,7 +28,7 @@ func TestStorePersistsAndRestores(t *testing.T) {
 	dir := t.TempDir()
 
 	st := NewStore(lib, dir)
-	s := game.NewState(lib.CardList(), "title")
+	s := game.NewState(lib, "title")
 	s.Session = "sess1"
 	s.Stats.Army = 7
 	if err := st.Put(s); err != nil {
@@ -60,7 +60,7 @@ func TestUpdateCommitsOnSuccess(t *testing.T) {
 	dir := t.TempDir()
 	lib := testLib(t)
 	st := NewStore(lib, dir)
-	s := game.NewState(lib.CardList(), "title")
+	s := game.NewState(lib, "title")
 	s.Session = "sess"
 	if err := st.Put(s); err != nil {
 		t.Fatalf("Put() error = %v", err)

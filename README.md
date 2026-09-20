@@ -36,19 +36,24 @@ a refused action or a crash can never corrupt a run.
 
 All content is JSON under `content/`. `content.Load` rejects, with a single
 aggregated error, any dangling card/scene reference, unknown stat key,
-malformed ending, unreachable scene, or bad random weight — the server
-refuses to boot on invalid content.
+malformed ending, unreachable scene, bad random weight, unobtainable card,
+or fully gated scene — the server refuses to boot on invalid content.
 
 **Cards** (`cards.json`): `id`, `name`, `text`, `cost` (Treasury to play,
-optional), `effects[]`.
+optional), `start` (dealt into the opening deck), `effects[]`. Non-start
+cards enter runs only through scene pools or `gain_card` effects; the
+loader proves every card is obtainable that way.
 
-**Scenes** (`scenes.json`): `id`, `text`, `ending` (optional; terminal
-scenes have no choices), `choices[]` with `text`, optional
-`requiresCard`/`consumesCard`/`requiresStat`, and `effects[]`.
+**Scenes** (`scenes.json`): `id`, `text`, `cards` (regional pool granted on
+first arrival), `ending` (optional; terminal scenes have no choices),
+`choices[]` with `text`, optional `requiresCard`/`consumesCard`/
+`requiresStat`, and `effects[]`. Every non-ending scene must keep at least
+one ungated choice so a run can never soft-lock.
 
 **Effects**: `stat` deltas (`{"legacy": 2}`), `gain_card`/`lose_card`
-(to discard)/`remove_card` (exiled from the run), `goto`, and `random`
-weighted `outcomes[]` whose effects nest recursively.
+(to discard)/`remove_card` (exiled from the run), `goto` (arrival grants
+the target scene's pool once), and `random` weighted `outcomes[]` whose
+effects nest recursively.
 
 Stats are a closed set: `legacy`, `army`, `treasury`. Endings are a closed
 set: `triumph`, `legacy`, `settle`, `defeat`, `death`.

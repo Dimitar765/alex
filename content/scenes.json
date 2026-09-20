@@ -1,10 +1,14 @@
 [
   {
     "id": "title",
-    "text": "Pella, 336 BC. Philip lies murdered at his own wedding games, and the phalanx roars your name — a twenty-year-old king with a doctrine of the spear and a copy of the Iliad under his pillow. The empire of Persia waits across the sea; but first, Macedonia must answer to you.",
+    "text": "Pella, 336 BC. Philip lies murdered at his own wedding games, and the phalanx roars your name — a twenty-year-old king with a doctrine of the spear and a copy of the Iliad under his pillow. Greece smolders; the empire of Persia waits across the sea; but first, Macedonia must answer to you.",
     "choices": [
       {
-        "text": "Secure the north first — Thrace and Illyria before Asia",
+        "text": "Put down the Greek revolt first — Thebes has torn down your garrison",
+        "effects": [{ "kind": "goto", "next": "thebes" }]
+      },
+      {
+        "text": "Secure the north — Thrace and Illyria before Asia",
         "effects": [{ "kind": "goto", "next": "balkans" }]
       },
       {
@@ -14,8 +18,30 @@
     ]
   },
   {
+    "id": "thebes",
+    "text": "Thebes, 335 BC. The city that once held the pass against Persia now bets everything on a rumor of your death. From the Cadmea you watch exiles and democrats dig through the frost to undermine the walls their grandfathers built. The Greek cities are watching what you do here.",
+    "cards": ["greek_mercenaries"],
+    "choices": [
+      {
+        "text": "Level the city — let Greece read the price of revolt in the rubble",
+        "effects": [
+          { "kind": "stat", "delta": { "legacy": 2, "treasury": 1 } },
+          { "kind": "goto", "next": "balkans" }
+        ]
+      },
+      {
+        "text": "Pardon the city for a fine and a garrison — fear fades, gold does not",
+        "effects": [
+          { "kind": "stat", "delta": { "legacy": 1, "treasury": 2 } },
+          { "kind": "goto", "next": "balkans" }
+        ]
+      }
+    ]
+  },
+  {
     "id": "balkans",
     "text": "The Triballi break at Mount Haemus and the Illyrian war-bands scatter into their hills. At the Danube, Scythian riders shadow your camp by night, counting fires, weighing your youth.",
+    "cards": ["scythian_horse"],
     "choices": [
       {
         "text": "Crush the Triballi root and branch — let the north learn the price of defiance",
@@ -79,6 +105,7 @@
   {
     "id": "issus",
     "text": "Issus, 333 BC. You have stolen behind him. Darius himself waits in the center of the Great Line, his household behind it — his mother, his wife, his children. The Persian host is wider than a city and deeper than a phalanx is long.",
+    "cards": ["persian_ransom"],
     "choices": [
       {
         "text": "Anchor the left and break the center where the Great King stands",
@@ -117,6 +144,7 @@
   {
     "id": "tyre",
     "text": "Tyre: an island fortress with the best fleet in the world and walls grown from the sea. They offered you token submission and forbade you their temple — an old city's arithmetic of pride. The mole you mean to build will take months and forests.",
+    "cards": ["siege_ladder"],
     "choices": [
       {
         "text": "Build the mole — join island to shore and make the sea itself your road",
@@ -156,6 +184,7 @@
   {
     "id": "egypt",
     "text": "Egypt receives you as a liberator and a pharaoh without a fight. Memphis feasts you; the priests of Ptah know a son of Ammon when they see one coming. West of the Delta lies a fishing village where a harbor dreams of being the hinge of the world.",
+    "cards": ["nile_grain"],
     "choices": [
       {
         "text": "Cross the desert to the oracle of Ammon at Siwa",
@@ -193,7 +222,8 @@
   },
   {
     "id": "gaugamela",
-    "text": "Gaugamela, 331 BC. Darius has had two years to choose his ground, and he has chosen well: a plain wide enough for scythed chariots and elephants, leveled for his wheeling horse. His engineers even removed the humps. Tonight his torches outnumber the stars.",
+    "text": "Gaugamela, 331 BC. Darius has had two years to choose his ground, and he has chosen well: a plain wide enough for scythed chariots and elephants, leveled for his wheeling horse. Tonight his torches outnumber the stars.",
+    "cards": ["parmenion_wing"],
     "choices": [
       {
         "text": "Anchor the line, refuse both wings, and punch through the Great King's guard",
@@ -242,6 +272,7 @@
   {
     "id": "persepolis",
     "text": "Persepolis, the staircased city of kings. The treasuries hold five thousand talents — more silver than the world has words for. In the great hall where Xerxes planned his war on Hellas, Thais of Athens puts a torch in your hand and the army roars for the sight.",
+    "cards": ["war_chest"],
     "choices": [
       {
         "text": "Take the diadem: stay in the East, and rule both worlds from Persepolis",
@@ -252,14 +283,14 @@
         "text": "Burn the palace of Xerxes — let Hellas hear the fire from across the sea",
         "effects": [
           { "kind": "stat", "delta": { "treasury": 3, "legacy": 2 } },
-          { "kind": "goto", "next": "bactria" }
+          { "kind": "goto", "next": "ecbatana" }
         ]
       },
       {
         "text": "Seal the treasuries and leave the halls standing — you are a king, not a raider",
         "effects": [
           { "kind": "stat", "delta": { "treasury": 4 } },
-          { "kind": "goto", "next": "bactria" }
+          { "kind": "goto", "next": "ecbatana" }
         ]
       }
     ]
@@ -270,8 +301,30 @@
     "ending": "settle"
   },
   {
+    "id": "ecbatana",
+    "text": "Ecbatana, 330 BC. You arrive with the Companion cavalry in eleven days, and it means nothing: Darius is gone east with a wagon train of gold and the last of his guards, dragged toward Bactria by men who will tire of him before you tire of the chase. The royal road runs ahead of you like a seam of silver.",
+    "cards": ["royal_road"],
+    "choices": [
+      {
+        "text": "Force-march the Companions after him — ride the Great King down yourself",
+        "effects": [
+          { "kind": "stat", "delta": { "army": -1, "legacy": 1 } },
+          { "kind": "goto", "next": "bactria" }
+        ]
+      },
+      {
+        "text": "Send Parmenion by the royal road with the baggage and the treasury",
+        "effects": [
+          { "kind": "stat", "delta": { "treasury": 2 } },
+          { "kind": "goto", "next": "bactria" }
+        ]
+      }
+    ]
+  },
+  {
     "id": "bactria",
     "text": "Bactria, the ceiling of the world. Bessus, who called himself Great King after burning his own, melts into the hills with the Sogdian rock-nests behind him. Every column you send comes back lighter; every fortress you take spawns two more behind it. This is war without a battle-line.",
+    "cards": ["sogdian_rock"],
     "choices": [
       {
         "text": "Bind the hill clans with a marriage — take Roxane of Bactria as your wife",
@@ -331,6 +384,10 @@
           { "kind": "gain_card", "cardId": "elephant_corps" },
           { "kind": "goto", "next": "hyphasis" }
         ]
+      },
+      {
+        "text": "Refuse the crossing — fortify the bank and let the monsoon argue with Porus instead",
+        "effects": [{ "kind": "goto", "next": "hyphasis" }]
       }
     ]
   },
@@ -343,14 +400,14 @@
         "requiresStat": { "legacy": 8 },
         "effects": [
           { "kind": "stat", "delta": { "army": 2, "legacy": 1 } },
-          { "kind": "goto", "next": "babylon" }
+          { "kind": "goto", "next": "gedrosia" }
         ]
       },
       {
         "text": "Yield to their tears; raise twelve altars to the end of the world and turn for home",
         "effects": [
           { "kind": "stat", "delta": { "legacy": 1 } },
-          { "kind": "goto", "next": "babylon" }
+          { "kind": "goto", "next": "gedrosia" }
         ]
       },
       {
@@ -366,6 +423,28 @@
     "id": "end_mutiny",
     "text": "You force the crossing, and the Ganges is real: elephants in numbers that make Porus a fond memory. But the defeat is not by the river. That night at the Hyphasis, the shield-wall closes around the royal tent the way it once closed around Philip — and the army that loved you keeps its own counsel about what happened in the dark.",
     "ending": "defeat"
+  },
+  {
+    "id": "gedrosia",
+    "text": "The way home lies through Gedrosia, where the land itself has opinions. Sixty days of desert: wells that lie, guides who vanish, a coast so hungry that even the fleet's grain is a rumor. Nearchus swears the ships can shadow you with water and wheat — if the monsoon holds.",
+    "choices": [
+      {
+        "text": "March the columns into the desert with the men — share their thirst, or the name dies here",
+        "effects": [
+          { "kind": "stat", "delta": { "army": -3, "legacy": 2 } },
+          { "kind": "goto", "next": "babylon" }
+        ]
+      },
+      {
+        "text": "Split the march — the fleet ferries water and grain along the coast",
+        "requiresCard": "nearchus_fleet",
+        "consumesCard": true,
+        "effects": [
+          { "kind": "stat", "delta": { "legacy": 1, "army": -1 } },
+          { "kind": "goto", "next": "babylon" }
+        ]
+      }
+    ]
   },
   {
     "id": "babylon",

@@ -35,15 +35,17 @@ type State struct {
 	Deck    []string // draw pile; the last element is the top
 	Discard []string
 	Log     []string
+	Granted []string // scenes whose card pools have been granted
 
 	Turns       int // successful actions taken (choices and card plays)
 	CardsPlayed int // card plays among those turns
 }
 
-// NewState builds a fresh state: shuffled deck, opening hand of HandSize.
-func NewState(cards []content.Card, startScene string) *State {
+// NewState builds a fresh state from the library's starting cards: a
+// shuffled opening deck and a hand of HandSize.
+func NewState(lib *content.Library, startScene string) *State {
 	s := &State{SceneID: startScene}
-	for _, c := range cards {
+	for _, c := range lib.StartingCards() {
 		s.Deck = append(s.Deck, c.ID)
 	}
 	rand.Shuffle(len(s.Deck), func(i, j int) { s.Deck[i], s.Deck[j] = s.Deck[j], s.Deck[i] })
@@ -60,24 +62,30 @@ func (s *State) Clone() *State {
 	c.Deck = slices.Clone(s.Deck)
 	c.Discard = slices.Clone(s.Discard)
 	c.Log = slices.Clone(s.Log)
+	c.Granted = slices.Clone(s.Granted)
 	return &c
 }
 
 // Choose applies a scene choice. It fails if the choice's card or stat
 // requirements are not met. A consuming choice spends its required card to
-// the discard pile. Effects apply in declared order; the hand then refills.
-func (s *State) Choose(choice content.Choice, cards map[string]content.Card) error {
-	if err := s.requirementError(choice, cards); err != nil {
+// the discard pile. Effects apply in declared order; arriving at a new
+// scene grants its card pool once; the hand then refills.
+func (s *State) Choose(choice content.Choice, lib *content.Library) error {
+	if err := s.requirementError(choice, lib.Cards); err != nil {
 		return err
 	}
 	parts := []string{choice.Text}
 	if choice.ConsumesCard {
 		takeCard(choice.RequiresCard, &s.Hand)
 		s.Discard = append(s.Discard, choice.RequiresCard)
-		parts = append(parts, "spent "+displayName(choice.RequiresCard, cards))
+		parts = append(parts, "spent "+displayName(choice.RequiresCard, lib.Cards))
 	}
-	if err := s.applyEffects(choice.Effects, cards, &parts); err != nil {
+	before := s.SceneID
+	if err := s.applyEffects(choice.Effects, lib, &parts); err != nil {
 		return err
+	}
+	if s.SceneID != before {
+		s.arrive(lib, &parts)
 	}
 	s.drawUp()
 	s.Turns++
@@ -88,24 +96,28 @@ func (s *State) Choose(choice content.Choice, cards map[string]content.Card) err
 // PlayCard removes a card from the hand to the discard pile, pays its cost,
 // applies its effects in order, and refills the hand. It fails if the card
 // is not in hand or the treasury cannot cover the cost.
-func (s *State) PlayCard(id string, cards map[string]content.Card) error {
+func (s *State) PlayCard(id string, lib *content.Library) error {
 	i := slices.Index(s.Hand, id)
 	if i < 0 {
-		return fmt.Errorf("%s is not in your hand", displayName(id, cards))
+		return fmt.Errorf("%s is not in your hand", displayName(id, lib.Cards))
 	}
-	card := cards[id]
+	card := lib.Cards[id]
 	if s.Stats.Treasury < card.Cost {
-		return fmt.Errorf("you cannot afford %s (costs %d treasury)", displayName(id, cards), card.Cost)
+		return fmt.Errorf("you cannot afford %s (costs %d treasury)", displayName(id, lib.Cards), card.Cost)
 	}
 	s.Hand = slices.Delete(s.Hand, i, i+1)
 	s.Discard = append(s.Discard, id)
-	parts := []string{"Played " + displayName(id, cards)}
+	parts := []string{"Played " + displayName(id, lib.Cards)}
 	if card.Cost > 0 {
 		s.Stats.Treasury -= card.Cost
 		parts = append(parts, fmt.Sprintf("Treasury -%d", card.Cost))
 	}
-	if err := s.applyEffects(card.Effects, cards, &parts); err != nil {
+	before := s.SceneID
+	if err := s.applyEffects(card.Effects, lib, &parts); err != nil {
 		return err
+	}
+	if s.SceneID != before {
+		s.arrive(lib, &parts)
 	}
 	s.drawUp()
 	s.Turns++
@@ -120,6 +132,20 @@ func (s *State) CanPlay(id string, cards map[string]content.Card) bool {
 		return false
 	}
 	return s.Stats.Treasury >= cards[id].Cost
+}
+
+// arrive grants the entered scene's regional card pool on first entry,
+// stacking the cards on the deck so they are drawn first.
+func (s *State) arrive(lib *content.Library, parts *[]string) {
+	sc := lib.Scenes[s.SceneID]
+	if len(sc.Cards) == 0 || slices.Contains(s.Granted, sc.ID) {
+		return
+	}
+	s.Granted = append(s.Granted, sc.ID)
+	for _, id := range sc.Cards {
+		s.Deck = append(s.Deck, id)
+		*parts = append(*parts, "gained "+displayName(id, lib.Cards))
+	}
 }
 
 // CanChoose reports whether the current hand and stats meet every
@@ -155,16 +181,16 @@ func (s *State) Stat(k string) int {
 	return 0
 }
 
-func (s *State) applyEffects(effects []content.Effect, cards map[string]content.Card, parts *[]string) error {
+func (s *State) applyEffects(effects []content.Effect, lib *content.Library, parts *[]string) error {
 	for _, e := range effects {
-		if err := s.apply(e, cards, parts); err != nil {
+		if err := s.apply(e, lib, parts); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s *State) apply(e content.Effect, cards map[string]content.Card, parts *[]string) error {
+func (s *State) apply(e content.Effect, lib *content.Library, parts *[]string) error {
 	switch e.Kind {
 	case content.KindStat:
 		for _, k := range slices.Sorted(maps.Keys(e.Delta)) {
@@ -184,16 +210,16 @@ func (s *State) apply(e content.Effect, cards map[string]content.Card, parts *[]
 	case content.KindGainCard:
 		// Deck top = last element, so an appended card is drawn first.
 		s.Deck = append(s.Deck, e.CardID)
-		*parts = append(*parts, "gained "+displayName(e.CardID, cards))
+		*parts = append(*parts, "gained "+displayName(e.CardID, lib.Cards))
 	case content.KindLoseCard:
 		// Lost for now: the card surfaces again when the discard cycles.
 		if takeCard(e.CardID, &s.Hand, &s.Deck) {
 			s.Discard = append(s.Discard, e.CardID)
-			*parts = append(*parts, "lost "+displayName(e.CardID, cards))
+			*parts = append(*parts, "lost "+displayName(e.CardID, lib.Cards))
 		}
 	case content.KindRemoveCard:
 		if takeCard(e.CardID, &s.Hand, &s.Deck, &s.Discard) {
-			*parts = append(*parts, displayName(e.CardID, cards)+" is gone for good")
+			*parts = append(*parts, displayName(e.CardID, lib.Cards)+" is gone for good")
 		}
 	case content.KindGoto:
 		s.SceneID = e.Next
@@ -205,7 +231,7 @@ func (s *State) apply(e content.Effect, cards map[string]content.Card, parts *[]
 		pick := rand.IntN(total)
 		for _, o := range e.Outcomes {
 			if pick < o.Weight {
-				return s.applyEffects(o.Effects, cards, parts)
+				return s.applyEffects(o.Effects, lib, parts)
 			}
 			pick -= o.Weight
 		}

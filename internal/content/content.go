@@ -69,12 +69,15 @@ type Effect struct {
 }
 
 // Card is a playable card. Cost is the treasury paid to play it (0 is
-// free). Effects apply in declared order.
+// free). Start marks cards dealt into the opening deck; everything else
+// enters a run only through scene pools or gain_card effects. Effects
+// apply in declared order.
 type Card struct {
 	ID      string   `json:"id"`
 	Name    string   `json:"name"`
 	Text    string   `json:"text"`
 	Cost    int      `json:"cost,omitempty"`
+	Start   bool     `json:"start,omitempty"`
 	Effects []Effect `json:"effects"`
 }
 
@@ -90,13 +93,15 @@ type Choice struct {
 	Effects      []Effect       `json:"effects"`
 }
 
-// Scene is one narrative location with its choices. A scene with a
-// non-empty Ending is terminal: it renders the run summary instead of
-// choices and must declare no choices.
+// Scene is one narrative location with its choices. Cards is the regional
+// pool granted to the run on first arrival. A scene with a non-empty
+// Ending is terminal: it renders the run summary instead of choices and
+// must declare no choices.
 type Scene struct {
 	ID      string   `json:"id"`
 	Text    string   `json:"text"`
 	Ending  string   `json:"ending,omitempty"`
+	Cards   []string `json:"cards,omitempty"`
 	Choices []Choice `json:"choices"`
 }
 
@@ -106,12 +111,25 @@ type Library struct {
 	Scenes map[string]Scene
 }
 
-// CardList returns all cards sorted by ID for deterministic deck setup.
+// CardList returns all cards sorted by ID for deterministic iteration.
 func (l *Library) CardList() []Card {
 	ids := slices.Sorted(maps.Keys(l.Cards))
 	out := make([]Card, 0, len(ids))
 	for _, id := range ids {
 		out = append(out, l.Cards[id])
+	}
+	return out
+}
+
+// StartingCards returns the opening deck: start-flagged cards, sorted by
+// ID for a deterministic shuffle base.
+func (l *Library) StartingCards() []Card {
+	ids := slices.Sorted(maps.Keys(l.Cards))
+	out := make([]Card, 0, len(ids))
+	for _, id := range ids {
+		if l.Cards[id].Start {
+			out = append(out, l.Cards[id])
+		}
 	}
 	return out
 }
@@ -175,6 +193,13 @@ func Load(fsys fs.FS) (*Library, error) {
 			}
 		} else if len(sc.Choices) == 0 {
 			problemf("scene %q has no choices (dead end)", sc.ID)
+		} else if !hasUngatedChoice(sc.Choices) {
+			problemf("scene %q: every choice is gated; a run must always have an escape path", sc.ID)
+		}
+		for _, id := range sc.Cards {
+			if _, ok := lib.Cards[id]; !ok {
+				problemf("scene %q card pool: unknown card %q", sc.ID, id)
+			}
 		}
 		for i, ch := range sc.Choices {
 			if ch.RequiresCard != "" {
@@ -195,6 +220,9 @@ func Load(fsys fs.FS) (*Library, error) {
 				}
 			}
 		}
+	}
+	for id := range unobtainable(lib, cards, scenes) {
+		problemf("card %q is unobtainable: not a start card, in no scene pool, and granted by nothing reachable", id)
 	}
 	if _, ok := lib.Scenes["title"]; !ok {
 		problemf(`no "title" scene`)
@@ -250,6 +278,73 @@ func validateEffect(e Effect, lib *Library) error {
 		return fmt.Errorf("unknown kind %q", e.Kind)
 	}
 	return nil
+}
+
+// hasUngatedChoice reports whether at least one choice needs no card and
+// no stat, keeping the scene escapable whatever the run's luck.
+func hasUngatedChoice(choices []Choice) bool {
+	for _, ch := range choices {
+		if ch.RequiresCard == "" && len(ch.RequiresStat) == 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// grantedCards adds every card id gained by effects, recursing through
+// random outcomes, to out.
+func grantedCards(effects []Effect, out map[string]bool) {
+	for _, e := range effects {
+		switch e.Kind {
+		case KindGainCard:
+			out[e.CardID] = true
+		case KindRandom:
+			for _, o := range e.Outcomes {
+				grantedCards(o.Effects, out)
+			}
+		}
+	}
+}
+
+// unobtainable returns the set of cards a run can never acquire. Seeds are
+// start cards and scene pools; scene-choice grants always count (their
+// scenes are reachability-checked); card-effect grants count only when the
+// granting card is itself obtainable, so the closure runs to a fixpoint.
+func unobtainable(lib *Library, cards []Card, scenes []Scene) map[string]bool {
+	have := map[string]bool{}
+	for _, c := range cards {
+		if c.Start {
+			have[c.ID] = true
+		}
+	}
+	for _, sc := range scenes {
+		for _, id := range sc.Cards {
+			have[id] = true
+		}
+		for _, ch := range sc.Choices {
+			grantedCards(ch.Effects, have)
+		}
+	}
+	for changed := true; changed; {
+		changed = false
+		for id := range have {
+			granted := map[string]bool{}
+			grantedCards(lib.Cards[id].Effects, granted)
+			for t := range granted {
+				if !have[t] {
+					have[t] = true
+					changed = true
+				}
+			}
+		}
+	}
+	missing := map[string]bool{}
+	for _, c := range cards {
+		if !have[c.ID] {
+			missing[c.ID] = true
+		}
+	}
+	return missing
 }
 
 // gotoTargets adds every scene id referenced by effects, recursing through

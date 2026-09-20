@@ -1,0 +1,8 @@
+{{define "deckInner"}}
+<details class="deck">
+  <summary>Deck · {{.DeckTotal}}</summary>
+  <ul class="deck-list">
+    {{range .Deck}}<li><span class="deck-name">{{.Name}}</span><span class="deck-count">×{{.Count}}</span></li>{{end}}
+  </ul>
+</details>
+{{end}}

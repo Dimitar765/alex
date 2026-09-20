@@ -7,8 +7,8 @@ import (
 )
 
 const happyCards = `[
-  {"id":"phalanx","name":"Phalanx","text":"A wall.","effects":[{"kind":"stat","delta":{"army":2}}]},
-  {"id":"decreed_alliance","name":"Decreed Alliance","text":"Paper walls.","effects":[{"kind":"gain_card","cardId":"phalanx"}]}
+  {"id":"phalanx","name":"Phalanx","text":"A wall.","start":true,"effects":[{"kind":"stat","delta":{"army":2}}]},
+  {"id":"decreed_alliance","name":"Decreed Alliance","text":"Paper walls.","start":true,"effects":[{"kind":"gain_card","cardId":"phalanx"}]}
 ]`
 
 const happyScenes = `[
@@ -183,6 +183,72 @@ func TestLoadNegativeCostRejected(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "negative cost") {
 		t.Fatalf("error must name the rule, got: %v", err)
+	}
+}
+
+func TestLoadUnobtainableCardRejected(t *testing.T) {
+	cards := `[
+      {"id":"core","name":"Core","text":"","start":true,"effects":[]},
+      {"id":"ghost_card","name":"Ghost","text":"","effects":[]},
+      {"id":"chain","name":"Chain","text":"","start":true,"effects":[{"kind":"gain_card","cardId":"via_chain"}]},
+      {"id":"via_chain","name":"ViaChain","text":"","effects":[]}
+    ]`
+	_, err := Load(fsFrom(t, cards, happyScenes))
+	if err == nil {
+		t.Fatal("Load() must reject unobtainable cards")
+	}
+	if !strings.Contains(err.Error(), `"ghost_card" is unobtainable`) {
+		t.Fatalf("error must name the unobtainable card, got: %v", err)
+	}
+	if strings.Contains(err.Error(), "via_chain") {
+		t.Fatal("gain_card chains from obtainable cards must count as obtainable")
+	}
+	if strings.Contains(err.Error(), `"core"`) {
+		t.Fatal("start cards are obtainable by definition")
+	}
+}
+
+func TestLoadAllGatedSceneRejected(t *testing.T) {
+	scenes := `[
+      {"id":"title","text":"","choices":[{"text":"A","effects":[{"kind":"goto","next": "vault"}]}]},
+      {"id":"vault","text":"","choices":[
+        {"text":"locked","requiresStat":{"army":5},"effects":[{"kind":"goto","next":"title"}]},
+        {"text":"sealed","requiresCard":"phalanx","effects":[{"kind":"goto","next":"title"}]}
+      ]}
+    ]`
+	_, err := Load(fsFrom(t, happyCards, scenes))
+	if err == nil {
+		t.Fatal("Load() must reject scenes whose every choice is gated")
+	}
+	if !strings.Contains(err.Error(), "escape path") {
+		t.Fatalf("error must name the escape-path rule, got: %v", err)
+	}
+}
+
+func TestLoadScenePoolUnknownCard(t *testing.T) {
+	scenes := `[
+      {"id":"title","text":"","cards":["ghost"],"choices":[{"text":"A","effects":[]}]}
+    ]`
+	_, err := Load(fsFrom(t, happyCards, scenes))
+	if err == nil {
+		t.Fatal("Load() must reject unknown cards in scene pools")
+	}
+	if !strings.Contains(err.Error(), `card pool: unknown card "ghost"`) {
+		t.Fatalf("error must name the pool violation, got: %v", err)
+	}
+}
+
+func TestLoadScenePoolMakesCardObtainable(t *testing.T) {
+	cards := `[
+      {"id":"core","name":"Core","text":"","start":true,"effects":[]},
+      {"id":"regional","name":"Regional","text":"","effects":[]}
+    ]`
+	scenes := `[
+      {"id":"title","text":"","choices":[{"text":"A","effects":[{"kind":"goto","next":"field"}]}]},
+      {"id":"field","text":"","cards":["regional"],"choices":[{"text":"B","effects":[{"kind":"goto","next":"title"}]}]}
+    ]`
+	if _, err := Load(fsFrom(t, cards, scenes)); err != nil {
+		t.Fatalf("scene pools must make cards obtainable: %v", err)
 	}
 }
 

@@ -39,6 +39,12 @@ type endingTile struct {
 	Discovered bool
 }
 
+// deckEntry is one card line in the deck inspector.
+type deckEntry struct {
+	Name  string
+	Count int
+}
+
 // view is the template data for the game page and the action partial.
 type view struct {
 	Stats       game.Stats
@@ -50,6 +56,8 @@ type view struct {
 	CardsPlayed int
 	Campaigns   int
 	Endings     []endingTile
+	Deck        []deckEntry
+	DeckTotal   int
 }
 
 // titleView is the template data for the title page.
@@ -87,7 +95,7 @@ func (s *Server) home(w http.ResponseWriter, r *http.Request, session string) {
 }
 
 func (s *Server) newGame(w http.ResponseWriter, r *http.Request, session string) {
-	st := game.NewState(s.store.lib.CardList(), startScene)
+	st := game.NewState(s.store.lib, startScene)
 	st.Session = session
 	if err := s.store.Put(st); err != nil {
 		http.Error(w, "could not save game", http.StatusInternalServerError)
@@ -103,7 +111,7 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request, session string) 
 		}
 		switch {
 		case r.FormValue("card") != "":
-			return st.PlayCard(r.FormValue("card"), s.store.lib.Cards)
+			return st.PlayCard(r.FormValue("card"), s.store.lib)
 		case r.FormValue("choice") != "":
 			return s.applyChoice(st, r.FormValue("choice"))
 		default:
@@ -133,7 +141,7 @@ func (s *Server) applyChoice(st *game.State, idx string) error {
 	if n < 0 || n >= len(scene.Choices) {
 		return errors.New("no such choice")
 	}
-	return st.Choose(scene.Choices[n], s.store.lib.Cards)
+	return st.Choose(scene.Choices[n], s.store.lib)
 }
 
 // buildView projects state into template data. A non-nil engine error is
@@ -154,6 +162,23 @@ func (s *Server) buildView(st *game.State, err error) view {
 		found[run.Ending] = true
 	}
 	v.Endings = gallery(found)
+
+	// Deck inspector: every card the run owns, across all piles.
+	counts := map[string]int{}
+	for _, pile := range [][]string{st.Hand, st.Deck, st.Discard} {
+		for _, id := range pile {
+			counts[id]++
+		}
+	}
+	for _, id := range slices.Sorted(maps.Keys(counts)) {
+		name := id
+		if c, ok := s.store.lib.Cards[id]; ok && c.Name != "" {
+			name = c.Name
+		}
+		v.Deck = append(v.Deck, deckEntry{Name: name, Count: counts[id]})
+		v.DeckTotal += counts[id]
+	}
+
 	log := slices.Clone(st.Log)
 	if err != nil {
 		log = append(log, "Error: "+err.Error())

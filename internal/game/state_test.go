@@ -8,24 +8,23 @@ import (
 	"goGame/internal/content"
 )
 
-func testCards() ([]content.Card, map[string]content.Card) {
-	mk := func(id, name string) content.Card {
-		return content.Card{ID: id, Name: name, Text: "flavor " + id}
+func testLib() *content.Library {
+	lib := &content.Library{Cards: map[string]content.Card{}, Scenes: map[string]content.Scene{}}
+	for _, c := range []content.Card{
+		{ID: "a", Name: "Alpha", Text: "flavor a", Start: true},
+		{ID: "b", Name: "Bravo", Text: "flavor b", Start: true},
+		{ID: "c", Name: "Charlie", Text: "flavor c", Start: true},
+		{ID: "d", Name: "Delta", Text: "flavor d", Start: true},
+		{ID: "e", Name: "Echo", Text: "flavor e", Start: true},
+	} {
+		lib.Cards[c.ID] = c
 	}
-	cards := []content.Card{
-		mk("a", "Alpha"), mk("b", "Bravo"), mk("c", "Charlie"),
-		mk("d", "Delta"), mk("e", "Echo"),
-	}
-	m := map[string]content.Card{}
-	for _, c := range cards {
-		m[c.ID] = c
-	}
-	return cards, m
+	return lib
 }
 
 func TestNewStateDealsOpeningHand(t *testing.T) {
-	cards, _ := testCards()
-	s := NewState(cards, "title")
+	lib := testLib()
+	s := NewState(lib, "title")
 	if s.SceneID != "title" {
 		t.Fatalf("SceneID = %q, want title", s.SceneID)
 	}
@@ -45,16 +44,16 @@ func TestNewStateDealsOpeningHand(t *testing.T) {
 }
 
 func TestActionCounters(t *testing.T) {
-	_, m := testCards()
+	lib := testLib()
 	s := &State{SceneID: "x", Hand: []string{"a"}, Deck: []string{"b", "c", "d", "e"}}
 	choice := content.Choice{Text: "March"}
-	if err := s.Choose(choice, m); err != nil {
+	if err := s.Choose(choice, lib); err != nil {
 		t.Fatalf("Choose() error = %v", err)
 	}
-	if err := s.PlayCard("a", m); err != nil {
+	if err := s.PlayCard("a", lib); err != nil {
 		t.Fatalf("PlayCard() error = %v", err)
 	}
-	if err := s.PlayCard("ghost", m); err == nil {
+	if err := s.PlayCard("ghost", lib); err == nil {
 		t.Fatal("refused play must not count")
 	}
 	if s.Turns != 2 || s.CardsPlayed != 1 {
@@ -85,13 +84,13 @@ func TestCloneIsIndependent(t *testing.T) {
 }
 
 func TestChooseRequiresStat(t *testing.T) {
-	_, m := testCards()
+	lib := testLib()
 	choice := content.Choice{
 		Text:         "Break the center",
 		RequiresStat: map[string]int{"army": 3, "legacy": 1},
 	}
 	s := &State{SceneID: "issus", Stats: Stats{Army: 2, Legacy: 5}, Hand: []string{"a"}}
-	err := s.Choose(choice, m)
+	err := s.Choose(choice, lib)
 	if err == nil || !strings.Contains(err.Error(), "requires Army 3 (you have 2)") {
 		t.Fatalf("Choose() error = %v, want Army shortfall named", err)
 	}
@@ -99,7 +98,7 @@ func TestChooseRequiresStat(t *testing.T) {
 		t.Fatalf("rejected choice must not move the scene: %q", s.SceneID)
 	}
 	s.Stats.Army = 3
-	if err := s.Choose(choice, m); err != nil {
+	if err := s.Choose(choice, lib); err != nil {
 		t.Fatalf("Choose() with met requirements failed: %v", err)
 	}
 }
@@ -124,7 +123,7 @@ func TestCanChooseReportsAvailability(t *testing.T) {
 }
 
 func TestLoseCardMovesToDiscard(t *testing.T) {
-	_, m := testCards()
+	lib := testLib()
 	// A stocked deck keeps drawUp from reshuffling the discard, so the lost
 	// cards provably stay in the discard pile for now.
 	s := &State{SceneID: "x", Hand: []string{"a", "b"}, Deck: []string{"c", "e", "e", "d", "d", "e"}}
@@ -132,8 +131,8 @@ func TestLoseCardMovesToDiscard(t *testing.T) {
 		{Kind: content.KindLoseCard, CardID: "c"},
 		{Kind: content.KindLoseCard, CardID: "b"},
 	}}
-	m["a"] = card
-	if err := s.PlayCard("a", m); err != nil {
+	lib.Cards["a"] = card
+	if err := s.PlayCard("a", lib); err != nil {
 		t.Fatalf("PlayCard() error = %v", err)
 	}
 	if slices.Contains(s.Hand, "b") || slices.Contains(s.Deck, "c") {
@@ -151,14 +150,14 @@ func TestLoseCardMovesToDiscard(t *testing.T) {
 }
 
 func TestRemoveCardExilesFromRun(t *testing.T) {
-	_, m := testCards()
+	lib := testLib()
 	s := &State{SceneID: "x", Hand: []string{"a", "b"}, Deck: []string{"c"}, Discard: []string{"d"}}
 	choice := content.Choice{Text: "The horse dies", Effects: []content.Effect{
 		{Kind: content.KindRemoveCard, CardID: "a"}, // from hand
 		{Kind: content.KindRemoveCard, CardID: "c"}, // from deck
 		{Kind: content.KindRemoveCard, CardID: "d"}, // from discard
 	}}
-	if err := s.Choose(choice, m); err != nil {
+	if err := s.Choose(choice, lib); err != nil {
 		t.Fatalf("Choose() error = %v", err)
 	}
 	piles := append(append(slices.Clone(s.Hand), s.Deck...), s.Discard...)
@@ -173,7 +172,7 @@ func TestRemoveCardExilesFromRun(t *testing.T) {
 }
 
 func TestRandomSingleOutcomeIsDeterministic(t *testing.T) {
-	_, m := testCards()
+	lib := testLib()
 	s := &State{SceneID: "start", Hand: []string{"a"}}
 	choice := content.Choice{Text: "Fate is kind", Effects: []content.Effect{
 		{Kind: content.KindRandom, Outcomes: []content.Outcome{{
@@ -181,7 +180,7 @@ func TestRandomSingleOutcomeIsDeterministic(t *testing.T) {
 			Effects: []content.Effect{{Kind: content.KindGoto, Next: "field"}},
 		}}},
 	}}
-	if err := s.Choose(choice, m); err != nil {
+	if err := s.Choose(choice, lib); err != nil {
 		t.Fatalf("Choose() error = %v", err)
 	}
 	if s.SceneID != "field" {
@@ -190,7 +189,7 @@ func TestRandomSingleOutcomeIsDeterministic(t *testing.T) {
 }
 
 func TestRandomRespectsWeights(t *testing.T) {
-	_, m := testCards()
+	lib := testLib()
 	rare := 0
 	const trials = 3000
 	for i := 0; i < trials; i++ {
@@ -201,7 +200,7 @@ func TestRandomRespectsWeights(t *testing.T) {
 				{Weight: 1, Effects: []content.Effect{{Kind: content.KindStat, Delta: map[string]int{"legacy": 1}}}},
 			}},
 		}}
-		if err := s.Choose(choice, m); err != nil {
+		if err := s.Choose(choice, lib); err != nil {
 			t.Fatalf("trial %d: %v", i, err)
 		}
 		if s.Stats.Legacy == 1 {
@@ -215,12 +214,12 @@ func TestRandomRespectsWeights(t *testing.T) {
 }
 
 func TestPlayCardCostsTreasury(t *testing.T) {
-	_, m := testCards()
-	m["a"] = content.Card{ID: "a", Name: "Alpha", Cost: 2, Effects: []content.Effect{
+	lib := testLib()
+	lib.Cards["a"] = content.Card{ID: "a", Name: "Alpha", Cost: 2, Effects: []content.Effect{
 		{Kind: content.KindStat, Delta: map[string]int{"army": 2}},
 	}}
 	s := &State{SceneID: "x", Hand: []string{"a", "b"}, Stats: Stats{Treasury: 3}}
-	if err := s.PlayCard("a", m); err != nil {
+	if err := s.PlayCard("a", lib); err != nil {
 		t.Fatalf("PlayCard() error = %v", err)
 	}
 	if s.Stats.Treasury != 1 || s.Stats.Army != 2 {
@@ -232,27 +231,27 @@ func TestPlayCardCostsTreasury(t *testing.T) {
 }
 
 func TestPlayCardUnaffordable(t *testing.T) {
-	_, m := testCards()
-	m["a"] = content.Card{ID: "a", Name: "Alpha", Cost: 2}
+	lib := testLib()
+	lib.Cards["a"] = content.Card{ID: "a", Name: "Alpha", Cost: 2}
 	s := &State{SceneID: "x", Hand: []string{"a", "b"}, Stats: Stats{Treasury: 1}}
-	err := s.PlayCard("a", m)
+	err := s.PlayCard("a", lib)
 	if err == nil || !strings.Contains(err.Error(), "cannot afford Alpha (costs 2 treasury)") {
 		t.Fatalf("PlayCard() error = %v, want affordability error", err)
 	}
 	if len(s.Hand) != 2 || s.Stats.Treasury != 1 {
 		t.Fatalf("refused play must not mutate state: hand=%v stats=%+v", s.Hand, s.Stats)
 	}
-	if s.CanPlay("a", m) {
+	if s.CanPlay("a", lib.Cards) {
 		t.Fatal("CanPlay must report unaffordable")
 	}
 	s.Stats.Treasury = 2
-	if !s.CanPlay("a", m) {
+	if !s.CanPlay("a", lib.Cards) {
 		t.Fatal("CanPlay must report affordable")
 	}
 }
 
 func TestChooseConsumesRequiredCard(t *testing.T) {
-	_, m := testCards()
+	lib := testLib()
 	choice := content.Choice{
 		Text:         "Ride him into the river",
 		RequiresCard: "e",
@@ -261,7 +260,7 @@ func TestChooseConsumesRequiredCard(t *testing.T) {
 	}
 	// A stocked deck keeps drawUp from recycling the consumed card.
 	s := &State{SceneID: "granicus", Hand: []string{"e", "a"}, Deck: []string{"b", "c", "d"}}
-	if err := s.Choose(choice, m); err != nil {
+	if err := s.Choose(choice, lib); err != nil {
 		t.Fatalf("Choose() error = %v", err)
 	}
 	if slices.Contains(s.Hand, "e") || !slices.Contains(s.Discard, "e") {
@@ -272,11 +271,67 @@ func TestChooseConsumesRequiredCard(t *testing.T) {
 	}
 }
 
+func TestNewStateDealsStartingCardsOnly(t *testing.T) {
+	lib := testLib()
+	regional := lib.Cards["e"]
+	regional.Start = false // Echo is regional now
+	lib.Cards["e"] = regional
+	s := NewState(lib, "title")
+	all := append(slices.Clone(s.Hand), s.Deck...)
+	for _, id := range all {
+		if id == "e" {
+			t.Fatalf("non-start card dealt into opening run: %v", all)
+		}
+	}
+	if len(all) != 4 {
+		t.Fatalf("opening piles = %d cards, want the 4 start cards", len(all))
+	}
+}
+
+func TestArrivalGrantsScenePoolOnce(t *testing.T) {
+	lib := testLib()
+	lib.Scenes["field"] = content.Scene{ID: "field", Cards: []string{"e"}}
+	s := &State{SceneID: "start", Hand: []string{"a"}, Deck: []string{"b"}}
+	enter := content.Choice{Text: "March", Effects: []content.Effect{{Kind: content.KindGoto, Next: "field"}}}
+
+	if err := s.Choose(enter, lib); err != nil {
+		t.Fatalf("first entry: %v", err)
+	}
+	if !slices.Contains(s.Granted, "field") {
+		t.Fatalf("field must be marked granted: %v", s.Granted)
+	}
+	// The granted card sits on the deck top, so the refill drew it.
+	if !slices.Contains(s.Hand, "e") {
+		t.Fatalf("granted card must be drawn first: hand=%v deck=%v", s.Hand, s.Deck)
+	}
+	if !strings.Contains(strings.Join(s.Log, " | "), "gained Echo") {
+		t.Fatalf("log must name the grant, got %v", s.Log)
+	}
+
+	// Leave and re-enter: the pool never grants twice.
+	exit := content.Choice{Text: "Back", Effects: []content.Effect{{Kind: content.KindGoto, Next: "start"}}}
+	enter2 := content.Choice{Text: "March again", Effects: []content.Effect{{Kind: content.KindGoto, Next: "field"}}}
+	before := len(s.Hand) + len(s.Deck) + len(s.Discard)
+	if err := s.Choose(exit, lib); err != nil {
+		t.Fatalf("exit: %v", err)
+	}
+	if err := s.Choose(enter2, lib); err != nil {
+		t.Fatalf("re-entry: %v", err)
+	}
+	after := len(s.Hand) + len(s.Deck) + len(s.Discard)
+	if after != before {
+		t.Fatalf("re-entry must not duplicate grants: piles %d -> %d", before, after)
+	}
+	if strings.Count(strings.Join(s.Log, " | "), "gained Echo") != 1 {
+		t.Fatalf("grant must be logged exactly once: %v", s.Log)
+	}
+}
+
 func TestChooseRequiresCard(t *testing.T) {
-	_, m := testCards()
+	lib := testLib()
 	s := &State{SceneID: "river", Hand: []string{"a", "b"}}
 	choice := content.Choice{Text: "Charge", RequiresCard: "e"}
-	err := s.Choose(choice, m)
+	err := s.Choose(choice, lib)
 	if err == nil || !strings.Contains(err.Error(), "Echo") {
 		t.Fatalf("Choose() error = %v, want error naming Echo", err)
 	}
@@ -286,7 +341,7 @@ func TestChooseRequiresCard(t *testing.T) {
 }
 
 func TestChooseAppliesEffectsAndRefills(t *testing.T) {
-	_, m := testCards()
+	lib := testLib()
 	s := &State{SceneID: "river", Hand: []string{"a", "b"}, Deck: []string{"c", "d"}}
 	choice := content.Choice{
 		Text: "March",
@@ -295,7 +350,7 @@ func TestChooseAppliesEffectsAndRefills(t *testing.T) {
 			{Kind: content.KindGoto, Next: "field"},
 		},
 	}
-	if err := s.Choose(choice, m); err != nil {
+	if err := s.Choose(choice, lib); err != nil {
 		t.Fatalf("Choose() error = %v", err)
 	}
 	want := Stats{Legacy: 2, Army: -1}
@@ -314,12 +369,12 @@ func TestChooseAppliesEffectsAndRefills(t *testing.T) {
 }
 
 func TestPlayCardDeckExhaustionReshufflesDiscard(t *testing.T) {
-	_, m := testCards()
+	lib := testLib()
 	// 5-card deck, opening hand of 4: six plays force repeated reshuffles.
 	s := &State{SceneID: "x", Hand: []string{"a", "b", "c", "d"}, Deck: []string{"e"}}
 	plays := []string{"a", "b", "c", "d", "e", "a"}
 	for i, id := range plays {
-		if err := s.PlayCard(id, m); err != nil {
+		if err := s.PlayCard(id, lib); err != nil {
 			t.Fatalf("play %d (%s): %v", i+1, id, err)
 		}
 		if len(s.Hand) != HandSize {
@@ -338,22 +393,22 @@ func TestPlayCardDeckExhaustionReshufflesDiscard(t *testing.T) {
 }
 
 func TestPlayCardNotInHand(t *testing.T) {
-	_, m := testCards()
+	lib := testLib()
 	s := &State{SceneID: "x", Hand: []string{"a"}}
-	if err := s.PlayCard("z", m); err == nil {
+	if err := s.PlayCard("z", lib); err == nil {
 		t.Fatal("PlayCard(unknown id) must error")
 	}
 }
 
 func TestGainCardReachesHand(t *testing.T) {
-	_, m := testCards()
+	lib := testLib()
 	s := &State{SceneID: "x", Hand: []string{"a", "b", "c"}, Deck: nil, Discard: nil}
 	card := content.Card{
 		ID: "a", Name: "Alpha",
 		Effects: []content.Effect{{Kind: content.KindGainCard, CardID: "e"}},
 	}
-	m["a"] = card
-	if err := s.PlayCard("a", m); err != nil {
+	lib.Cards["a"] = card
+	if err := s.PlayCard("a", lib); err != nil {
 		t.Fatalf("PlayCard() error = %v", err)
 	}
 	if !slices.Contains(s.Hand, "e") {
@@ -362,11 +417,11 @@ func TestGainCardReachesHand(t *testing.T) {
 }
 
 func TestLogCap(t *testing.T) {
-	_, m := testCards()
+	lib := testLib()
 	s := &State{SceneID: "x"}
 	choice := content.Choice{Text: "Wait"}
 	for i := 0; i < MaxLogLen+10; i++ {
-		if err := s.Choose(choice, m); err != nil {
+		if err := s.Choose(choice, lib); err != nil {
 			t.Fatalf("Choose() error = %v", err)
 		}
 	}

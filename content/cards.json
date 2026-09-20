@@ -4,6 +4,7 @@
     "name": "Companion Charge",
     "text": "The Companions hit like a thunderbolt; the line bends and breaks.",
     "cost": 1,
+    "start": true,
     "effects": [{ "kind": "stat", "delta": { "legacy": 2, "army": 1 } }]
   },
   {
@@ -11,7 +12,64 @@
     "name": "Phalanx",
     "text": "Sarissas level; the wall of bronze advances and does not stop.",
     "cost": 1,
+    "start": true,
     "effects": [{ "kind": "stat", "delta": { "army": 2 } }]
+  },
+  {
+    "id": "wedge_formation",
+    "name": "Wedge Formation",
+    "text": "A spearhead of horse and foot, driven where the enemy line is thinnest.",
+    "cost": 1,
+    "start": true,
+    "effects": [{ "kind": "stat", "delta": { "army": 1, "legacy": 1 } }]
+  },
+  {
+    "id": "hypaspists",
+    "name": "Shield-Bearers",
+    "text": "The hypaspists: picked men who hold the seam between horse and pike.",
+    "cost": 1,
+    "start": true,
+    "effects": [{ "kind": "stat", "delta": { "army": 1, "legacy": 1 } }]
+  },
+  {
+    "id": "agrianians",
+    "name": "Agrianian Javelins",
+    "text": "Hillmen who run at walls and rivers as if they were neither.",
+    "start": true,
+    "effects": [{ "kind": "stat", "delta": { "army": 1 } }]
+  },
+  {
+    "id": "bucephalus",
+    "name": "Bucephalus",
+    "text": "The great black horse fears only his own shadow — and you ride him anyway.",
+    "start": true,
+    "effects": [{ "kind": "stat", "delta": { "legacy": 1 } }]
+  },
+  {
+    "id": "royal_decree",
+    "name": "Royal Decree",
+    "text": "A seal, a scribble, and the provinces remit their tribute.",
+    "start": true,
+    "effects": [{ "kind": "stat", "delta": { "treasury": 2 } }]
+  },
+  {
+    "id": "greek_mercenaries",
+    "name": "Greek Mercenaries",
+    "text": "Hoplites of the cities, hired now under your standard instead of Persia's.",
+    "cost": 1,
+    "effects": [{ "kind": "stat", "delta": { "army": 2 } }]
+  },
+  {
+    "id": "scythian_horse",
+    "name": "Scythian Horse",
+    "text": "Steppe riders who taught the Danube tribes fear, now teaching the Persians.",
+    "effects": [{ "kind": "stat", "delta": { "army": 1, "legacy": 1 } }]
+  },
+  {
+    "id": "persian_ransom",
+    "name": "Ransom of the Court",
+    "text": "The Great King's household, held against tribute in gold and grudging respect.",
+    "effects": [{ "kind": "stat", "delta": { "treasury": 2 } }]
   },
   {
     "id": "siege_ladder",
@@ -21,36 +79,23 @@
     "effects": [{ "kind": "stat", "delta": { "army": 2 } }]
   },
   {
-    "id": "bucephalus",
-    "name": "Bucephalus",
-    "text": "The great black horse fears only his own shadow — and you ride him anyway.",
-    "effects": [{ "kind": "stat", "delta": { "legacy": 1 } }]
-  },
-  {
-    "id": "royal_decree",
-    "name": "Royal Decree",
-    "text": "A seal, a scribble, and the provinces remit their tribute.",
+    "id": "nile_grain",
+    "name": "Grain of the Nile",
+    "text": "Egypt's harvests feed the phalanx while Macedon's barley waits at home.",
     "effects": [{ "kind": "stat", "delta": { "treasury": 2 } }]
   },
   {
-    "id": "wedge_formation",
-    "name": "Wedge Formation",
-    "text": "A spearhead of horse and foot, driven where the enemy line is thinnest.",
+    "id": "parmenion_wing",
+    "name": "Parmenion's Wing",
+    "text": "The old fox holds the left against anything, if anyone asks him twice.",
     "cost": 1,
-    "effects": [{ "kind": "stat", "delta": { "army": 1, "legacy": 1 } }]
+    "effects": [{ "kind": "stat", "delta": { "army": 2 } }]
   },
   {
-    "id": "hypaspists",
-    "name": "Shield-Bearers",
-    "text": "The hypaspists: picked men who hold the seam between horse and pike.",
-    "cost": 1,
-    "effects": [{ "kind": "stat", "delta": { "army": 1, "legacy": 1 } }]
-  },
-  {
-    "id": "agrianians",
-    "name": "Agrianian Javelins",
-    "text": "Hillmen who run at walls and rivers as if they were neither.",
-    "effects": [{ "kind": "stat", "delta": { "army": 1 } }]
+    "id": "royal_road",
+    "name": "Persian Royal Road",
+    "text": "A thousand miles of post-horses and stone bridges, yours to command.",
+    "effects": [{ "kind": "stat", "delta": { "treasury": 1, "army": 1 } }]
   },
   {
     "id": "war_chest",
@@ -59,10 +104,11 @@
     "effects": [{ "kind": "stat", "delta": { "treasury": 2 } }]
   },
   {
-    "id": "royal_road",
-    "name": "Persian Royal Road",
-    "text": "A thousand miles of post-horses and stone bridges, yours to command.",
-    "effects": [{ "kind": "stat", "delta": { "treasury": 1, "army": 1 } }]
+    "id": "sogdian_rock",
+    "name": "Sogdian Rock",
+    "text": "They said only winged men could take it. In the morning, three hundred stood on its walls.",
+    "cost": 1,
+    "effects": [{ "kind": "stat", "delta": { "legacy": 2 } }]
   },
   {
     "id": "siwa_oracle",

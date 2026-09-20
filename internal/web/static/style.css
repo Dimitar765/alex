@@ -162,6 +162,41 @@ button.primary { padding: 0.65rem 1.2rem; }
   padding: 0.9rem 1.25rem;
 }
 
+#deck { margin-top: -0.75rem; }
+
+.deck {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.deck summary {
+  cursor: pointer;
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+}
+
+.deck-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  columns: 2;
+  gap: 1.5rem;
+  font-size: 0.85rem;
+}
+
+.deck-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  break-inside: avoid;
+}
+
+.deck-count {
+  font-family: ui-monospace, Menlo, monospace;
+  color: var(--gold);
+}
+
 .log {
   list-style: none;
   padding: 0;
