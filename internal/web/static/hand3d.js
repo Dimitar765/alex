@@ -30,8 +30,8 @@
   host.insertBefore(canvas, host.firstChild);
 
   var scene = new THREE.Scene();
-  var camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
-  var camBase = { x: 0, y: 2.7, z: 7.4 };
+  var camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
+  var camBase = { x: 0, y: 2.4, z: 6.3 };
   camera.position.set(camBase.x, camBase.y, camBase.z);
   camera.lookAt(0, -0.2, 0);
 
@@ -50,7 +50,7 @@
 
   // --- card textures -------------------------------------------------------
   var GOLD = "#c9a227";
-  var CARD_W = 1.5, CARD_H = 2.1;
+  var CARD_W = 1.7, CARD_H = 2.38;
   var textureCache = {};
   var emblemCache = {}; // card id -> decoded 320x320 canvas
   var artDoc = null;
@@ -272,7 +272,7 @@
 
   // Deck stack (visual only; counts come from data-deck).
   var deckGroup = new THREE.Group();
-  deckGroup.position.set(3.35, 0.15, -1.8);
+  deckGroup.position.set(2.55, 0.6, -1.7);
   deckGroup.rotation.x = -0.18;
   scene.add(deckGroup);
   var deckCards = [];
@@ -358,7 +358,7 @@
   function fanSlot(i, n) {
     var t = n === 1 ? 0 : (i - (n - 1) / 2);
     return {
-      x: t * 1.18,
+      x: t * 1.3,
       y: -Math.abs(t) * 0.16 - 0.1,
       z: 0.6 - Math.abs(t) * 0.1,
       rz: -t * 0.085
