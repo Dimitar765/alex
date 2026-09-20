@@ -51,23 +51,15 @@ func newLayout() layoutMetrics {
 }
 
 // titleScreen is the landing view: campaign start, continue, chronicle.
-type titleScreen struct{}
-
-func (titleScreen) update(g *Game) error {
-	if g.keysPressed[ebiten.KeyEscape] {
-		return ebiten.Termination
-	}
-	return nil
+type titleScreen struct {
+	focus int // index into the current menu; -1 = mouse mode
 }
 
-func (titleScreen) draw(g *Game, dst *ebiten.Image) {
-	dst.Fill(themeBackground)
-	drawText(dst, "Alexander", g.theme.DisplayFace(faceTitle), 48, 40, themeGold)
-	drawText(dst, "a card adventure", g.theme.FaceItalic(faceScene), 52, 108, themeMuted)
-
-	// Menu: Continue first when a campaign is underway.
+// menu builds the button list for the current model state; used by both
+// update (focus math) and draw (rendering) so they always agree.
+func (s *titleScreen) menu(m *app.Model) []button {
 	var labels []string
-	if g.model.HasRun() {
+	if m.HasRun() {
 		labels = append(labels, "Continue")
 	}
 	labels = append(labels, "New game", "Chronicle")
@@ -80,21 +72,65 @@ func (titleScreen) draw(g *Game, dst *ebiten.Image) {
 			primary: label == "New game",
 		})
 	}
+	return menu
+}
+
+func (s *titleScreen) activate(g *Game, b button) {
+	switch b.Label {
+	case "New game":
+		g.model.NewGame()
+		g.replaceScreen(&tableScreen{})
+	case "Continue":
+		g.replaceScreen(&tableScreen{})
+	case "Chronicle":
+		g.pushScreen(&chronicleScreen{})
+	}
+}
+
+func (s *titleScreen) update(g *Game) error {
+	if g.back() {
+		return ebiten.Termination
+	}
+	menu := s.menu(g.model)
+
+	if step := g.verticalStep() + g.horizontalStep(); step != 0 {
+		if s.focus < 0 {
+			s.focus = 0
+		} else {
+			s.focus = (s.focus + step + len(menu)) % len(menu)
+		}
+	}
+	if s.focus >= 0 && g.confirm() && s.focus < len(menu) {
+		s.activate(g, menu[s.focus])
+		return nil
+	}
+	for i := range menu {
+		if menu[i].clicked(g) {
+			s.activate(g, menu[i])
+			s.focus = -1
+		}
+	}
+	return nil
+}
+
+func (s *titleScreen) draw(g *Game, dst *ebiten.Image) {
+	dst.Fill(themeBackground)
+	drawText(dst, "Alexander", g.theme.DisplayFace(faceTitle), 48, 40, themeGold)
+	drawText(dst, "a card adventure", g.theme.FaceItalic(faceScene), 52, 108, themeMuted)
+
+	menu := s.menu(g.model)
 	for i := range menu {
 		b := &menu[i]
+		focused := s.focus == i
+		if focused {
+			drawText(dst, "▸", g.theme.Face(faceBody), b.Rect.X-24, b.Rect.Y+8, themeGold)
+		}
 		b.draw(g, dst)
 		if !b.clicked(g) {
 			continue
 		}
-		switch b.Label {
-		case "New game":
-			g.model.NewGame()
-			g.replaceScreen(&tableScreen{})
-		case "Continue":
-			g.replaceScreen(&tableScreen{})
-		case "Chronicle":
-			g.pushScreen(&chronicleScreen{})
-		}
+		s.focus = -1
+		s.activate(g, menu[i])
 	}
 
 	// Endings gallery tiles under the menu.
@@ -110,8 +146,12 @@ func (titleScreen) draw(g *Game, dst *ebiten.Image) {
 }
 
 // tableScreen is the main play view: card fan left, scene and log right.
+// Focus indices: -1 none, 0..len(hand)-1 a hand card, then Scout, then
+// Shuffle.
 type tableScreen struct {
-	cards *cardCache
+	cards     *cardCache
+	focus     int
+	endingBtn Rectangle // set while drawing the ending summary
 }
 
 func (s *tableScreen) ensureCache() {
@@ -120,58 +160,107 @@ func (s *tableScreen) ensureCache() {
 	}
 }
 
-func (tableScreen) update(g *Game) error {
-	if g.keysPressed[ebiten.KeyEscape] {
+func (s *tableScreen) update(g *Game) error {
+	if g.back() {
 		g.popScreen()
+		return nil
+	}
+	v := g.model.View()
+	if v.Scene.Ending != "" {
+		// Run over: the summary panel's button (or confirm) restarts.
+		if (g.mouseClicked && s.endingBtn.Contains(g.cursorX, g.cursorY)) || g.confirm() {
+			g.model.NewGame()
+		}
+		return nil
+	}
+
+	n := len(v.Hand)
+	targets := n + 2 // hand cards + Scout + Shuffle
+	if step := g.horizontalStep(); step != 0 {
+		if s.focus < 0 {
+			s.focus = 0
+		} else {
+			s.focus = (s.focus + step + targets) % targets
+		}
+	}
+	if g.confirm() && s.focus >= 0 {
+		switch {
+		case s.focus < n:
+			if r := g.model.PlayCard(v.Hand[s.focus].ID); r.Err == nil {
+				g.consumeEffects(r)
+				s.focus = -1
+			}
+		case s.focus == n:
+			g.model.Scout()
+		default:
+			g.model.Shuffle()
+		}
+	}
+	if s.focus > targets {
+		s.focus = -1
 	}
 	return nil
 }
 
-func (s tableScreen) draw(g *Game, dst *ebiten.Image) {
+func (s *tableScreen) draw(g *Game, dst *ebiten.Image) {
 	s.ensureCache()
 	dst.Fill(themeBackground)
 	v := g.model.View()
 	l := newLayout()
-	drawTable(g, dst, v)
+	s.drawTable(g, dst, v)
 
-	// Fan of hand cards in the table column, below the scene panel band.
-	if v.Scene.Ending == "" {
-		positions := fanPositions(len(v.Hand), l.table.W)
-		for i, c := range v.Hand {
-			p := positions[i]
-			// Hover lift: cards rise toward the cursor like the web fan.
-			hover := Rectangle{X: p.X - cardW/2, Y: p.Y - cardH/2, W: cardW, H: cardH}.
-				Contains(g.cursorX, g.cursorY)
-			if hover && c.Playable {
-				p.Y -= 16
-			}
-			s.cards.drawCard(dst, s.cards.face(g, c), p.X, p.Y, p.Angle, 1, !c.Playable)
-			if hover && c.Playable && g.mouseClicked {
-				if r := g.model.PlayCard(c.ID); r.Err == nil {
-					g.consumeEffects(r)
-				}
-			}
-		}
-
-		// Deck row under the fan.
-		rowY := l.table.Y + l.table.H - 96
-		drawText(dst, fmt.Sprintf("Deck · %d", v.DeckCount), g.theme.Face(faceSmall),
-			l.table.X+4, rowY, themeGold)
-		drawText(dst, fmt.Sprintf("Discard · %d", v.DiscardCount), g.theme.Face(faceSmall),
-			l.table.X+4, rowY+30, themeMuted)
-
-		shuffleLabel := fmt.Sprintf("Shuffle · %d", v.DiscardCount)
-		shuffle := button{Rect: Rectangle{X: l.table.X + l.table.W - 110, Y: rowY - 4, W: 110, H: 36}, Label: shuffleLabel}
-		scout := button{Rect: Rectangle{X: l.table.X + l.table.W - 228, Y: rowY - 4, W: 110, H: 36}, Label: "Scout"}
-		if scout.clicked(g) {
-			g.model.Scout()
-		}
-		if shuffle.clicked(g) {
-			g.model.Shuffle()
-		}
-		scout.draw(g, dst)
-		shuffle.draw(g, dst)
+	if v.Scene.Ending != "" {
+		return
 	}
+
+	n := len(v.Hand)
+	positions := fanPositions(n, l.table.W)
+	for i, c := range v.Hand {
+		p := positions[i]
+		focused := s.focus == i
+		// Hover lift: cards rise toward the cursor like the web fan.
+		hover := Rectangle{X: p.X - cardW/2, Y: p.Y - cardH/2, W: cardW, H: cardH}.
+			Contains(g.cursorX, g.cursorY)
+		scale, lift := 1.0, 0.0
+		if hover && c.Playable {
+			lift = 16
+		}
+		if focused {
+			lift = 12
+			scale = 1.05
+		}
+		s.cards.drawCard(dst, s.cards.face(g, c), p.X, p.Y-lift, p.Angle, scale, !c.Playable)
+		if hover && c.Playable && g.mouseClicked {
+			if r := g.model.PlayCard(c.ID); r.Err == nil {
+				g.consumeEffects(r)
+			}
+		}
+	}
+
+	// Deck row under the fan.
+	rowY := l.table.Y + l.table.H - 96
+	drawText(dst, fmt.Sprintf("Deck · %d", v.DeckCount), g.theme.Face(faceSmall),
+		l.table.X+4, rowY, themeGold)
+	drawText(dst, fmt.Sprintf("Discard · %d", v.DiscardCount), g.theme.Face(faceSmall),
+		l.table.X+4, rowY+30, themeMuted)
+
+	shuffleLabel := fmt.Sprintf("Shuffle · %d", v.DiscardCount)
+	shuffle := button{Rect: Rectangle{X: l.table.X + l.table.W - 110, Y: rowY - 4, W: 110, H: 36}, Label: shuffleLabel}
+	scout := button{Rect: Rectangle{X: l.table.X + l.table.W - 228, Y: rowY - 4, W: 110, H: 36}, Label: "Scout"}
+	if s.focus == n {
+		drawText(dst, "▸", g.theme.Face(faceBody), scout.Rect.X-20, scout.Rect.Y+6, themeGold)
+	}
+	if s.focus == n+1 {
+		drawText(dst, "▸", g.theme.Face(faceBody), shuffle.Rect.X-20, shuffle.Rect.Y+6, themeGold)
+	}
+	if scout.clicked(g) {
+		g.model.Scout()
+	}
+	if shuffle.clicked(g) {
+		g.model.Shuffle()
+	}
+	scout.draw(g, dst)
+	shuffle.draw(g, dst)
 }
 
 // abs is math.Abs for the fan arc.
@@ -213,7 +302,7 @@ func fanPositions(n int, tableW float64) []cardSlot {
 }
 
 // drawTable renders the play side: scene panel, stats, choices, log.
-func drawTable(g *Game, dst *ebiten.Image, v *app.View) {
+func (s *tableScreen) drawTable(g *Game, dst *ebiten.Image, v *app.View) {
 	l := newLayout()
 	panel(dst, l.scenePanel)
 
@@ -236,9 +325,7 @@ func drawTable(g *Game, dst *ebiten.Image, v *app.View) {
 		again := button{Rect: Rectangle{X: l.scenePanel.X + 20, Y: statsY + 104, W: 240, H: 42},
 			Label: "Begin a new campaign", primary: true}
 		again.draw(g, dst)
-		if again.clicked(g) {
-			g.model.NewGame()
-		}
+		s.endingBtn = again.Rect
 		return
 	}
 
@@ -308,26 +395,11 @@ func digitKey(i int) ebiten.Key {
 	return ebiten.KeyEscape
 }
 
-// endingScreen shows the run summary once the campaign is over.
-type endingScreen struct{}
-
-func (endingScreen) update(g *Game) error {
-	if g.keysPressed[ebiten.KeyEscape] {
-		g.popScreen()
-	}
-	return nil
-}
-
-func (endingScreen) draw(g *Game, dst *ebiten.Image) {
-	dst.Fill(themeBackground)
-	drawText(dst, "The campaign ends", g.theme.DisplayFace(faceHeader), 48, 60, themeGold)
-}
-
 // chronicleScreen lists completed runs.
 type chronicleScreen struct{}
 
 func (chronicleScreen) update(g *Game) error {
-	if g.keysPressed[ebiten.KeyEscape] || g.keysPressed[ebiten.KeyBackspace] {
+	if g.back() {
 		g.popScreen()
 	}
 	return nil

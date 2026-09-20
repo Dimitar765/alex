@@ -30,6 +30,7 @@ type Game struct {
 	cursorX, cursorY float64
 	mouseClicked     bool
 	keysPressed      map[ebiten.Key]bool
+	stickX, stickY   float64 // previous tick's left-stick axes
 }
 
 // New builds the root game: theme, model, and the landing screen.
@@ -75,7 +76,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 // Layout returns the fixed design-space size; Ebitengine scales the
 // window onto it.
-func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
+func (g *Game) Layout(_, _ int) (int, int) {
 	return ScreenW, ScreenH
 }
 
@@ -116,3 +117,11 @@ func (g *Game) replaceScreen(s screen) {
 // Phase 5 turns this into tweens/particles/audio; for now the events are
 // acknowledged so the view-model contract is exercised end to end.
 func (g *Game) consumeEffects(r app.Result) {}
+
+// screen returns the top of the screen stack, or nil when empty.
+func (g *Game) screen() screen {
+	if n := len(g.stack); n > 0 {
+		return g.stack[n-1]
+	}
+	return nil
+}
