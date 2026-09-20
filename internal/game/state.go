@@ -22,6 +22,17 @@ const ShuffleCost = 1
 // MaxLogLen bounds the human-readable event log.
 const MaxLogLen = 50
 
+// The Persian response: ThreatMax is the campaign pressure cap, reached
+// by base advance + scene pressure after every spent turn. Crossing
+// ThreatRaid triggers a raid, ThreatAmbush an ambush; the max forces the
+// battle scene (content.BattleScene), whose choices decide the campaign's
+// fate.
+const (
+	ThreatMax    = 20
+	ThreatRaid   = 8
+	ThreatAmbush = 14
+)
+
 // Stats are the tracked resources. They may go negative by design.
 type Stats struct {
 	Legacy   int
@@ -35,6 +46,7 @@ type State struct {
 	Session string
 	SceneID string
 	Stats   Stats
+	Threat  int `json:"threat,omitempty"`
 	Hand    []string
 	Deck    []string // draw pile; the last element is the top
 	Discard []string
@@ -122,6 +134,7 @@ func (s *State) Choose(choice content.Choice, lib *content.Library) error {
 		s.arrive(lib, &parts)
 	}
 	s.drawUp()
+	s.endTurn(lib, &parts)
 	s.Turns++
 	s.appendLog(joinParts(parts))
 	return nil
@@ -155,6 +168,7 @@ func (s *State) PlayCard(id string, lib *content.Library) error {
 		s.arrive(lib, &parts)
 	}
 	s.drawUp()
+	s.endTurn(lib, &parts)
 	s.Turns++
 	s.CardsPlayed++
 	s.appendLog(joinParts(parts))
@@ -172,7 +186,7 @@ func (s *State) CanPlay(id string, cards map[string]content.Card) bool {
 // Shuffle pays ShuffleCost treasury and spends the turn recycling the
 // discard pile into the deck. It fails when there is nothing to shuffle
 // or the treasury cannot cover the cost.
-func (s *State) Shuffle() error {
+func (s *State) Shuffle(lib *content.Library) error {
 	s.Rolled = false
 	if len(s.Discard) == 0 {
 		return errors.New("nothing to shuffle — the discard pile is empty")
@@ -184,8 +198,10 @@ func (s *State) Shuffle() error {
 	s.Deck = append(s.Deck, s.Discard...)
 	s.Discard = nil
 	s.shuffle(len(s.Deck), func(i, j int) { s.Deck[i], s.Deck[j] = s.Deck[j], s.Deck[i] })
+	parts := []string{"Shuffled the discard pile into the deck", fmt.Sprintf("Treasury -%d", ShuffleCost)}
+	s.endTurn(lib, &parts)
 	s.Turns++
-	s.appendLog(joinParts([]string{"Shuffled the discard pile into the deck", fmt.Sprintf("Treasury -%d", ShuffleCost)}))
+	s.appendLog(joinParts(parts))
 	return nil
 }
 
@@ -197,8 +213,10 @@ func (s *State) Peek(lib *content.Library) (string, error) {
 		return "", errors.New("the deck is empty — nothing to scout")
 	}
 	top := s.Deck[len(s.Deck)-1]
+	parts := []string{"Scouted the deck"}
+	s.endTurn(lib, &parts)
 	s.Turns++
-	s.appendLog("Scouted the deck: next card is " + displayName(top, lib.Cards))
+	s.appendLog(joinParts(parts) + " Next card is " + displayName(top, lib.Cards))
 	return top, nil
 }
 
@@ -213,6 +231,39 @@ func (s *State) arrive(lib *content.Library, parts *[]string) {
 	for _, id := range sc.Cards {
 		s.Deck = append(s.Deck, id)
 		*parts = append(*parts, "gained "+displayName(id, lib.Cards))
+	}
+}
+
+// endTurn is the Persian response: after every spent turn the enemy host
+// advances by one plus the current scene's pressure, raiding the baggage
+// train at ThreatRaid, ambushing the line at ThreatAmbush, and forcing
+// the BattleScene once the track maxes out. Deterministic by design.
+// Terminal scenes are exempt — nothing moves after the credits roll.
+func (s *State) endTurn(lib *content.Library, parts *[]string) {
+	if lib.Scenes[s.SceneID].Ending != "" {
+		return
+	}
+	before := s.Threat
+	s.Threat += 1 + lib.Scenes[s.SceneID].Threat
+	s.Threat = min(max(s.Threat, 0), ThreatMax)
+	if s.Threat > before {
+		*parts = append(*parts, fmt.Sprintf("Threat +%d", s.Threat-before))
+	}
+	if before < ThreatRaid && s.Threat >= ThreatRaid {
+		s.Stats.Treasury--
+		*parts = append(*parts, "the Persians raid your baggage train (Treasury -1)")
+	}
+	if before < ThreatAmbush && s.Threat >= ThreatAmbush && len(s.Hand) > 0 {
+		i := s.intN(len(s.Hand))
+		id := s.Hand[i]
+		s.Hand = slices.Delete(s.Hand, i, i+1)
+		s.Discard = append(s.Discard, id)
+		*parts = append(*parts, "an ambush scatters "+displayName(id, lib.Cards))
+	}
+	if s.Threat >= ThreatMax && s.SceneID != content.BattleScene {
+		s.SceneID = content.BattleScene
+		s.arrive(lib, parts)
+		*parts = append(*parts, "the Persian host closes in — battle is joined")
 	}
 }
 
@@ -304,6 +355,15 @@ func (s *State) apply(e content.Effect, lib *content.Library, parts *[]string) e
 			}
 			pick -= o.Weight
 		}
+	case content.KindThreat:
+		s.Threat += e.Value
+		if s.Threat < 0 {
+			s.Threat = 0
+		}
+		if s.Threat > ThreatMax {
+			s.Threat = ThreatMax
+		}
+		*parts = append(*parts, fmt.Sprintf("Threat %+d", e.Value))
 	default:
 		return fmt.Errorf("unknown effect kind %q", e.Kind)
 	}

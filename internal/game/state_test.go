@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/json"
 	"slices"
 	"strings"
 	"testing"
@@ -59,7 +60,7 @@ func TestPeekRevealsTopWithoutTouchingPiles(t *testing.T) {
 	if len(s.Deck) != 2 || s.Deck[1] != "c" || len(s.Hand) != 1 {
 		t.Fatalf("peek must not touch piles: deck=%v hand=%v", s.Deck, s.Hand)
 	}
-	if !strings.Contains(strings.Join(s.Log, " | "), "Scouted the deck: next card is Charlie") {
+	if !strings.Contains(strings.Join(s.Log, " | "), "Next card is Charlie") {
 		t.Fatalf("log must name the scouted card, got %v", s.Log)
 	}
 }
@@ -104,7 +105,7 @@ func TestShuffleRecyclesDiscardAndSpendsTurn(t *testing.T) {
 	lib := testLib()
 	s := &State{SceneID: "x", Hand: []string{"a"}, Deck: []string{"b"}, Discard: []string{"c", "d"}, Stats: Stats{Treasury: 2}}
 	turns := s.Turns
-	if err := s.Shuffle(); err != nil {
+	if err := s.Shuffle(lib); err != nil {
 		t.Fatalf("Shuffle() error = %v", err)
 	}
 	if s.Turns != turns+1 || s.CardsPlayed != 0 {
@@ -121,7 +122,7 @@ func TestShuffleRecyclesDiscardAndSpendsTurn(t *testing.T) {
 	if !slices.Equal(all, []string{"a", "b", "c", "d"}) {
 		t.Fatalf("cards must be conserved: %v", all)
 	}
-	if !strings.Contains(strings.Join(s.Log, " | "), "Shuffled the discard pile into the deck. Treasury -1.") {
+	if !strings.Contains(strings.Join(s.Log, " | "), "Shuffled the discard pile into the deck. Treasury -1") {
 		t.Fatalf("log must record the shuffle and cost, got %v", s.Log)
 	}
 	_ = lib
@@ -129,7 +130,7 @@ func TestShuffleRecyclesDiscardAndSpendsTurn(t *testing.T) {
 
 func TestShuffleBrokeRefused(t *testing.T) {
 	s := &State{SceneID: "x", Hand: []string{"a"}, Deck: []string{"b"}, Discard: []string{"c"}}
-	err := s.Shuffle()
+	err := s.Shuffle(nil) // refused before endTurn needs the library
 	if err == nil || !strings.Contains(err.Error(), "cannot afford to shuffle (costs 1 treasury)") {
 		t.Fatalf("Shuffle() error = %v, want affordability refusal", err)
 	}
@@ -140,7 +141,7 @@ func TestShuffleBrokeRefused(t *testing.T) {
 
 func TestShuffleEmptyDiscardRefused(t *testing.T) {
 	s := &State{SceneID: "x", Hand: []string{"a"}, Deck: []string{"b"}}
-	err := s.Shuffle()
+	err := s.Shuffle(nil) // refused before endTurn needs the library
 	if err == nil || !strings.Contains(err.Error(), "nothing to shuffle") {
 		t.Fatalf("Shuffle() error = %v, want refusal", err)
 	}
@@ -536,5 +537,115 @@ func TestLogCap(t *testing.T) {
 	}
 	if !strings.Contains(s.Log[len(s.Log)-1], "Wait") {
 		t.Fatalf("newest entry must be kept, got %q", s.Log[len(s.Log)-1])
+	}
+}
+
+// --- The Persian response (threat track) ---------------------------------
+
+func TestThreatRaidCrossingEights(t *testing.T) {
+	lib := testLib()
+	s := &State{SceneID: "x", Threat: 7, Stats: Stats{Treasury: 3}, Hand: []string{"a"}, Deck: []string{"b"}}
+	parts := []string{"acted"}
+	s.endTurn(lib, &parts)
+	if s.Threat != 8 {
+		t.Fatalf("threat = %d, want 8", s.Threat)
+	}
+	if s.Stats.Treasury != 2 {
+		t.Fatalf("raid must cost 1 treasury, got %+v", s.Stats)
+	}
+	if !strings.Contains(strings.Join(parts, " | "), "raid") {
+		t.Fatalf("raid not logged: %v", parts)
+	}
+	// Staying at 8 must not raid again.
+	before := s.Stats.Treasury
+	s.endTurn(lib, &parts)
+	if s.Stats.Treasury != before {
+		t.Fatal("raid re-triggered without crossing the threshold")
+	}
+}
+
+func TestThreatAmbushDiscardsHandCard(t *testing.T) {
+	lib := testLib()
+	s := &State{SceneID: "x", Threat: 13, Hand: []string{"a", "b", "c"}, Deck: nil, Discard: nil}
+	parts := []string{"acted"}
+	s.endTurn(lib, &parts)
+	if s.Threat != 14 {
+		t.Fatalf("threat = %d, want 14", s.Threat)
+	}
+	if len(s.Hand) != 2 || len(s.Discard) != 1 {
+		t.Fatalf("ambush must move one hand card to the discard: hand=%v discard=%v", s.Hand, s.Discard)
+	}
+	kept := append(slices.Clone(s.Hand), s.Discard...)
+	slices.Sort(kept)
+	if !slices.Equal(kept, []string{"a", "b", "c"}) {
+		t.Fatalf("cards must be conserved: %v", kept)
+	}
+}
+
+func TestThreatMaxForcesBattleOnce(t *testing.T) {
+	lib := testLib()
+	s := &State{SceneID: "x", Threat: 19, Hand: []string{"a"}, Deck: []string{"b"}}
+	parts := []string{"acted"}
+	s.endTurn(lib, &parts)
+	if s.SceneID != content.BattleScene {
+		t.Fatalf("scene = %q, want %q", s.SceneID, content.BattleScene)
+	}
+	if s.Threat != ThreatMax {
+		t.Fatalf("threat = %d, want %d", s.Threat, ThreatMax)
+	}
+	if !strings.Contains(strings.Join(parts, " | "), "battle is joined") {
+		t.Fatalf("battle not logged: %v", parts)
+	}
+	// Waiting a turn in the battle scene must not re-force the transition.
+	s.endTurn(lib, &parts)
+	if s.SceneID != content.BattleScene || s.Threat != ThreatMax {
+		t.Fatalf("battle re-forced: scene=%q threat=%d", s.SceneID, s.Threat)
+	}
+}
+
+func TestThreatEffectReducesAndClamps(t *testing.T) {
+	lib := testLib()
+	lib.Cards["calm"] = content.Card{
+		ID: "calm", Name: "Calm", Cost: 0,
+		Effects: []content.Effect{{Kind: content.KindThreat, Value: -5}},
+	}
+	s := &State{SceneID: "x", Threat: 2, Hand: []string{"calm"}}
+	if err := s.PlayCard("calm", lib); err != nil {
+		t.Fatalf("play calm: %v", err)
+	}
+	// Clamped to 0 by the effect, then the turn's own advance adds 1.
+	if s.Threat != 1 {
+		t.Fatalf("threat = %d, want 1 (clamped, then advanced)", s.Threat)
+	}
+	if !strings.Contains(strings.Join(s.Log, " | "), "Threat -5") {
+		t.Fatalf("reduction not logged: %v", s.Log)
+	}
+}
+
+func TestTerminalSceneIsExemptFromThreat(t *testing.T) {
+	lib := &content.Library{
+		Cards:  map[string]content.Card{},
+		Scenes: map[string]content.Scene{"end": {ID: "end", Ending: "defeat", Threat: 2}},
+	}
+	s := &State{SceneID: "end", Threat: 19, Hand: []string{"a"}}
+	parts := []string{"acted"}
+	s.endTurn(lib, &parts)
+	if s.Threat != 19 || s.SceneID != "end" {
+		t.Fatalf("terminal scene must be exempt: threat=%d scene=%q", s.Threat, s.SceneID)
+	}
+}
+
+func TestThreatPersistsThroughSave(t *testing.T) {
+	s := &State{SceneID: "x", Threat: 9, Hand: []string{"a"}}
+	b, err := json.Marshal(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var back State
+	if err := json.Unmarshal(b, &back); err != nil {
+		t.Fatal(err)
+	}
+	if back.Threat != 9 {
+		t.Fatalf("threat not persisted: %+v", back)
 	}
 }

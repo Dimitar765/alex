@@ -20,6 +20,7 @@ const (
 	KindRemoveCard = "remove_card"
 	KindGoto       = "goto"
 	KindRandom     = "random"
+	KindThreat     = "threat"
 )
 
 // Stat keys usable in stat-effect deltas. The game engine maps each key to
@@ -50,6 +51,11 @@ var Endings = map[string]bool{
 // EndingOrder is the display order of ending classifications for galleries.
 var EndingOrder = []string{"triumph", "legacy", "settle", "defeat", "death"}
 
+// BattleScene is the final-battle scene the game engine forces when the
+// threat track maxes out. It is entered by rule rather than by a goto
+// effect, so validation seeds it as reachable.
+const BattleScene = "battle"
+
 // Outcome is one weighted branch of a random effect. Weight is relative
 // likelihood and must be at least 1.
 type Outcome struct {
@@ -59,13 +65,14 @@ type Outcome struct {
 
 // Effect is one game-rule step. Kind selects which other field is used:
 // stat -> Delta, gain_card/lose_card/remove_card -> CardID, goto -> Next,
-// random -> Outcomes.
+// random -> Outcomes, threat -> Value.
 type Effect struct {
 	Kind     string         `json:"kind"`
 	CardID   string         `json:"cardId,omitempty"`
 	Delta    map[string]int `json:"delta,omitempty"`
 	Next     string         `json:"next,omitempty"`
 	Outcomes []Outcome      `json:"outcomes,omitempty"`
+	Value    int            `json:"value,omitempty"`
 }
 
 // Card is a playable card. Cost is the treasury paid to play it (0 is
@@ -94,13 +101,15 @@ type Choice struct {
 }
 
 // Scene is one narrative location with its choices. Cards is the regional
-// pool granted to the run on first arrival. A scene with a non-empty
-// Ending is terminal: it renders the run summary instead of choices and
-// must declare no choices.
+// pool granted to the run on first arrival. Threat is the enemy pressure
+// of the region, added to the base advance after every spent turn. A scene
+// with a non-empty Ending is terminal: it renders the run summary instead
+// of choices and must declare no choices.
 type Scene struct {
 	ID      string   `json:"id"`
 	Text    string   `json:"text"`
 	Ending  string   `json:"ending,omitempty"`
+	Threat  int      `json:"threat,omitempty"`
 	Cards   []string `json:"cards,omitempty"`
 	Choices []Choice `json:"choices"`
 }
@@ -257,6 +266,10 @@ func validateEffect(e Effect, lib *Library) error {
 		if _, ok := lib.Scenes[e.Next]; !ok {
 			return fmt.Errorf("goto references unknown scene %q", e.Next)
 		}
+	case KindThreat:
+		if e.Value == 0 {
+			return fmt.Errorf("threat effect with zero value")
+		}
 	case KindRandom:
 		if len(e.Outcomes) == 0 {
 			return fmt.Errorf("random effect with no outcomes")
@@ -371,7 +384,7 @@ func unreachable(lib *Library, cards []Card) map[string]bool {
 		gotoTargets(c.Effects, cardEdges)
 	}
 	reached := map[string]bool{}
-	queue := []string{"title"}
+	queue := []string{"title", BattleScene}
 	for len(queue) > 0 {
 		id := queue[0]
 		queue = queue[1:]

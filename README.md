@@ -41,6 +41,19 @@ reaches new lands. The run ends in one of five endings: triumph, legacy, settle,
 or two flavors of defeat. Keys 1–3 take choices (with JavaScript); the
 **Chronicle** page tracks your campaign history.
 
+### The Persian response
+
+After every turn you spend — cards, choices, scout, shuffle — the Great
+King's host advances: **+1 base plus the pressure of the region you stand
+in** (fronts press hardest, home cities not at all). The track is
+deterministic, so you can plan around it. At **8** the Persians raid your
+baggage train (−1 Treasury); at **14** an ambush scatters a random hand
+card into the discard; at **20** the campaign erupts into a final battle
+you cannot march past — hold it with a strong Army, charge it with
+Bucephalus, buy your way out with 5 Treasury, or slink away in defeat.
+Some cards calm the front instead of fighting: spending them for
+`Threat −2` is often the wiser war.
+
 ## Architecture
 
 | Package | Role |

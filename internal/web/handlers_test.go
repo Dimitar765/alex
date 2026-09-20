@@ -610,7 +610,7 @@ func TestScoutActionFlow(t *testing.T) {
 	if strings.Contains(b, "Error:") {
 		t.Fatalf("scout failed: %s", b)
 	}
-	if !strings.Contains(b, "Scouted the deck: next card is") {
+	if !strings.Contains(b, "Next card is") {
 		t.Fatalf("log must record the scout, got: %s", b)
 	}
 }

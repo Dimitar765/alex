@@ -57,7 +57,7 @@
     "name": "Greek Mercenaries",
     "text": "Hoplites of the cities, hired now under your standard instead of Persia's.",
     "cost": 1,
-    "effects": [{ "kind": "stat", "delta": { "army": 2 } }]
+    "effects": [{ "kind": "stat", "delta": { "army": 2 } }, { "kind": "threat", "value": -2 }]
   },
   {
     "id": "scythian_horse",
@@ -69,7 +69,7 @@
     "id": "persian_ransom",
     "name": "Ransom of the Court",
     "text": "The Great King's household, held against tribute in gold and grudging respect.",
-    "effects": [{ "kind": "stat", "delta": { "treasury": 2 } }]
+    "effects": [{ "kind": "stat", "delta": { "treasury": 2 } }, { "kind": "threat", "value": -2 }]
   },
   {
     "id": "siege_ladder",
@@ -82,7 +82,7 @@
     "id": "nile_grain",
     "name": "Grain of the Nile",
     "text": "Egypt's harvests feed the phalanx while Macedon's barley waits at home.",
-    "effects": [{ "kind": "stat", "delta": { "treasury": 2 } }]
+    "effects": [{ "kind": "stat", "delta": { "treasury": 2 } }, { "kind": "threat", "value": -1 }]
   },
   {
     "id": "parmenion_wing",
@@ -101,7 +101,7 @@
     "id": "war_chest",
     "name": "Persian War Chest",
     "text": "Captured gold from the satraps' tents, still warm from their greed.",
-    "effects": [{ "kind": "stat", "delta": { "treasury": 2 } }]
+    "effects": [{ "kind": "stat", "delta": { "treasury": 2 } }, { "kind": "threat", "value": -2 }]
   },
   {
     "id": "sogdian_rock",
