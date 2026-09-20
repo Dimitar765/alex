@@ -37,7 +37,7 @@ type Report struct {
 	TurnsMax      int
 	Stuck         int
 	StuckHere     map[string]int // scene -> times stuck there
-	BattleArrived int              // runs that faced the forced battle
+	BattleArrived int            // runs that faced the forced battle
 }
 
 // Simulate plays n campaigns with the random-greedy policy, deterministically
