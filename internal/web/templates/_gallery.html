@@ -1,0 +1,10 @@
+{{define "galleryInner"}}
+<div class="gallery" aria-label="Endings discovered">
+  {{range .}}
+  <div class="gallery-tile">
+    {{if .Discovered}}<span class="ending-badge {{.Class}}">{{.Class}}</span>
+    {{else}}<span class="ending-badge undiscovered">???</span>{{end}}
+  </div>
+  {{end}}
+</div>
+{{end}}

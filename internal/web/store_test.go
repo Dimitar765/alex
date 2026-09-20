@@ -169,6 +169,35 @@ func TestAtomicSaveLeavesNoTempFiles(t *testing.T) {
 	}
 }
 
+func TestHistoryPersistsAcrossRestart(t *testing.T) {
+	dir := t.TempDir()
+	lib := testLib(t)
+	st := NewStore(lib, dir)
+
+	// Reach the demo ending scene and record two runs for the session.
+	endState := &game.State{Session: "sess", SceneID: "end_demo", Stats: game.Stats{Legacy: 9}, Turns: 12, CardsPlayed: 5}
+	if err := st.CompleteRun("sess", endState); err != nil {
+		t.Fatalf("CompleteRun(): %v", err)
+	}
+	endState.Stats = game.Stats{Legacy: 4}
+	if err := st.CompleteRun("sess", endState); err != nil {
+		t.Fatalf("CompleteRun(): %v", err)
+	}
+
+	// A fresh store (simulating restart) restores the history.
+	runs := NewStore(lib, dir).History("sess")
+	if len(runs) != 2 {
+		t.Fatalf("History() = %d runs, want 2", len(runs))
+	}
+	if runs[0].Ending != "triumph" || runs[1].Stats.Legacy != 4 || runs[0].Turns != 12 {
+		t.Fatalf("restored runs mismatch: %+v", runs)
+	}
+
+	if got := st.History("unknownsession"); got != nil {
+		t.Fatalf("History(unknown) = %+v, want nil", got)
+	}
+}
+
 func TestSweepRemovesOnlyStaleSaves(t *testing.T) {
 	dir := t.TempDir()
 	st := NewStore(testLib(t), dir)

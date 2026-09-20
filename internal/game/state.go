@@ -35,6 +35,9 @@ type State struct {
 	Deck    []string // draw pile; the last element is the top
 	Discard []string
 	Log     []string
+
+	Turns       int // successful actions taken (choices and card plays)
+	CardsPlayed int // card plays among those turns
 }
 
 // NewState builds a fresh state: shuffled deck, opening hand of HandSize.
@@ -77,6 +80,7 @@ func (s *State) Choose(choice content.Choice, cards map[string]content.Card) err
 		return err
 	}
 	s.drawUp()
+	s.Turns++
 	s.appendLog(joinParts(parts))
 	return nil
 }
@@ -104,6 +108,8 @@ func (s *State) PlayCard(id string, cards map[string]content.Card) error {
 		return err
 	}
 	s.drawUp()
+	s.Turns++
+	s.CardsPlayed++
 	s.appendLog(joinParts(parts))
 	return nil
 }

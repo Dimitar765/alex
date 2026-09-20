@@ -12,6 +12,8 @@
     <button type="submit" class="primary">Begin a new campaign</button>
   </form>
 </div>
+<p class="run-summary">The campaign ends after {{.Turns}} turns · {{.CardsPlayed}} cards played · {{.Campaigns}} campaign{{if gt .Campaigns 1}}s{{end}} completed</p>
+{{template "galleryInner" .Endings}}
 {{else}}
 <div class="choices">
   {{range .Choices}}

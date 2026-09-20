@@ -44,6 +44,24 @@ func TestNewStateDealsOpeningHand(t *testing.T) {
 	}
 }
 
+func TestActionCounters(t *testing.T) {
+	_, m := testCards()
+	s := &State{SceneID: "x", Hand: []string{"a"}, Deck: []string{"b", "c", "d", "e"}}
+	choice := content.Choice{Text: "March"}
+	if err := s.Choose(choice, m); err != nil {
+		t.Fatalf("Choose() error = %v", err)
+	}
+	if err := s.PlayCard("a", m); err != nil {
+		t.Fatalf("PlayCard() error = %v", err)
+	}
+	if err := s.PlayCard("ghost", m); err == nil {
+		t.Fatal("refused play must not count")
+	}
+	if s.Turns != 2 || s.CardsPlayed != 1 {
+		t.Fatalf("Turns = %d, CardsPlayed = %d; want 2 and 1 (refusals excluded)", s.Turns, s.CardsPlayed)
+	}
+}
+
 func TestCloneIsIndependent(t *testing.T) {
 	s := &State{
 		SceneID: "x",

@@ -33,19 +33,54 @@ type cardView struct {
 	Playable bool
 }
 
+// endingTile is one slot in the endings gallery.
+type endingTile struct {
+	Class      string
+	Discovered bool
+}
+
 // view is the template data for the game page and the action partial.
 type view struct {
-	Stats   game.Stats
-	Scene   content.Scene
-	Choices []choiceView
-	Hand    []cardView
-	Log     []string
+	Stats       game.Stats
+	Scene       content.Scene
+	Choices     []choiceView
+	Hand        []cardView
+	Log         []string
+	Turns       int
+	CardsPlayed int
+	Campaigns   int
+	Endings     []endingTile
+}
+
+// titleView is the template data for the title page.
+type titleView struct {
+	Scene     content.Scene
+	Campaigns int
+	Endings   []endingTile
+}
+
+// gallery builds the endings tiles over content.EndingOrder.
+func gallery(found map[string]bool) []endingTile {
+	tiles := make([]endingTile, 0, len(content.EndingOrder))
+	for _, class := range content.EndingOrder {
+		tiles = append(tiles, endingTile{Class: class, Discovered: found[class]})
+	}
+	return tiles
 }
 
 func (s *Server) home(w http.ResponseWriter, r *http.Request, session string) {
 	st := s.store.Get(session)
 	if st == nil {
-		s.renderPage(w, "title.html", s.store.lib.Scenes[startScene])
+		hist := s.store.History(session)
+		found := map[string]bool{}
+		for _, run := range hist {
+			found[run.Ending] = true
+		}
+		s.renderPage(w, "title.html", titleView{
+			Scene:     s.store.lib.Scenes[startScene],
+			Campaigns: len(hist),
+			Endings:   gallery(found),
+		})
 		return
 	}
 	s.renderPage(w, "game.html", s.buildView(st, nil))
@@ -79,6 +114,13 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request, session string) 
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
+	if err == nil && s.store.lib.Scenes[next.SceneID].Ending != "" {
+		// The run just ended; record it exactly once (post-ending actions
+		// are refused, so this transition cannot repeat).
+		if rerr := s.store.CompleteRun(session, next); rerr != nil {
+			log.Printf("record run %s: %v", session, rerr)
+		}
+	}
 	s.respondAction(w, r, s.buildView(next, err))
 }
 
@@ -99,7 +141,19 @@ func (s *Server) applyChoice(st *game.State, idx string) error {
 // The log renders newest first so the latest action is always on top.
 func (s *Server) buildView(st *game.State, err error) view {
 	scene := s.store.lib.Scenes[st.SceneID]
-	v := view{Stats: st.Stats, Scene: scene}
+	v := view{
+		Stats:       st.Stats,
+		Scene:       scene,
+		Turns:       st.Turns,
+		CardsPlayed: st.CardsPlayed,
+	}
+	hist := s.store.History(st.Session)
+	v.Campaigns = len(hist)
+	found := map[string]bool{}
+	for _, run := range hist {
+		found[run.Ending] = true
+	}
+	v.Endings = gallery(found)
 	log := slices.Clone(st.Log)
 	if err != nil {
 		log = append(log, "Error: "+err.Error())

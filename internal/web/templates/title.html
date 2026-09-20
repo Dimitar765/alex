@@ -1,9 +1,11 @@
 {{define "content"}}
 <section id="scene" class="title-scene">
   <h2>The Age of Alexander</h2>
-  <p class="scene-text">{{.Text}}</p>
+  <p class="scene-text">{{.Scene.Text}}</p>
   <form method="post" action="/game/new">
     <button type="submit" class="primary">Begin the campaign</button>
   </form>
+  {{if .Campaigns}}<p class="campaigns">{{.Campaigns}} campaign{{if gt .Campaigns 1}}s{{end}} completed</p>{{end}}
+  {{template "galleryInner" .Endings}}
 </section>
 {{end}}

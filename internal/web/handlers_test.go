@@ -121,6 +121,13 @@ func TestHomeWithoutStateRendersTitle(t *testing.T) {
 			t.Fatalf("title page missing %q", want)
 		}
 	}
+	// A fresh session shows a fully undiscovered endings gallery.
+	if n := strings.Count(b, "???"); n != 5 {
+		t.Fatalf("fresh gallery must show 5 undiscovered slots, got %d", n)
+	}
+	if strings.Contains(b, "campaigns completed") {
+		t.Fatal("fresh session must not claim completed campaigns")
+	}
 }
 
 func TestNewGameRedirectsAndDealsHand(t *testing.T) {
@@ -250,6 +257,9 @@ func TestEndingFlowRendersSummaryAndRefusesFurtherActions(t *testing.T) {
 		"The world is yours.",
 		`<span class="ending-badge triumph">triumph</span>`,
 		"Begin a new campaign",
+		"1 campaign completed",
+		`class="ending-badge undiscovered">???</`,
+		`aria-label="Endings discovered"`,
 	} {
 		if !strings.Contains(b, want) {
 			t.Fatalf("ending summary missing %q, got: %s", want, b)
@@ -267,6 +277,34 @@ func TestEndingFlowRendersSummaryAndRefusesFurtherActions(t *testing.T) {
 	}
 	if !strings.Contains(b, "The world is yours.") {
 		t.Fatal("refused action must keep the ending scene")
+	}
+}
+
+// The recorded run must persist across a new game: the title page then
+// shows the campaign count and the discovered ending tile.
+func TestRunHistorySurvivesNewGame(t *testing.T) {
+	c, base := newTestClient(t)
+	startGame(t, c, base)
+	postAction(t, c, base, url.Values{"card": {"decree"}})
+	postAction(t, c, base, url.Values{"choice": {"0"}}) // title → field
+	postAction(t, c, base, url.Values{"choice": {"1"}}) // → ending, run recorded
+
+	resp := postForm(t, c, base+"/game/new", nil) // start over
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("new game after ending = %d, want 200", resp.StatusCode)
+	}
+	b := readBody(t, get(t, c, base+"/"))
+	if !strings.Contains(b, "March out") {
+		t.Fatal("new game must start fresh at the title scene")
+	}
+	// Session persistence check via history: end the second run too, then
+	// the counter must read two campaigns.
+	postAction(t, c, base, url.Values{"card": {"decree"}})
+	postAction(t, c, base, url.Values{"choice": {"0"}})
+	postAction(t, c, base, url.Values{"choice": {"1"}})
+	b = readBody(t, get(t, c, base+"/"))
+	if !strings.Contains(b, "2 campaigns completed") {
+		t.Fatalf("second completed run not counted, got: %s", b)
 	}
 }
 

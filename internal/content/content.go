@@ -47,6 +47,9 @@ var Endings = map[string]bool{
 	"death":   true,
 }
 
+// EndingOrder is the display order of ending classifications for galleries.
+var EndingOrder = []string{"triumph", "legacy", "settle", "defeat", "death"}
+
 // Outcome is one weighted branch of a random effect. Weight is relative
 // likelihood and must be at least 1.
 type Outcome struct {

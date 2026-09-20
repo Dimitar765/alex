@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -13,24 +14,40 @@ import (
 	"goGame/internal/game"
 )
 
-// Store holds committed game states and mirrors them to one JSON save file
-// per session. Session IDs reaching these methods must already be validated
-// by the cookie layer (sessionRe); the store only concatenates them into
-// filenames. An empty dir means memory-only (used by tests).
+// Store holds committed game states and their run history, mirroring both
+// to JSON files in the save directory. Session IDs reaching these methods
+// must already be validated by the cookie layer (sessionRe); the store only
+// concatenates them into filenames. An empty dir means memory-only (used by
+// tests).
 //
 // Stored states are immutable once committed: Update works on a clone and
 // is the only path that replaces an entry, and persistence happens before
 // publication, so memory and disk can never diverge on a failed action.
 type Store struct {
-	mu    sync.Mutex
-	games map[string]*game.State
-	lib   *content.Library
-	dir   string
+	mu      sync.Mutex
+	games   map[string]*game.State
+	history map[string][]RunSummary
+	lib     *content.Library
+	dir     string
+}
+
+// RunSummary records one completed campaign for the endings gallery.
+type RunSummary struct {
+	Ending      string     `json:"ending"`
+	Stats       game.Stats `json:"stats"`
+	Turns       int        `json:"turns"`
+	CardsPlayed int        `json:"cardsPlayed"`
+	Date        time.Time  `json:"date"`
 }
 
 // NewStore builds a store persisting to dir ("" disables persistence).
 func NewStore(lib *content.Library, dir string) *Store {
-	return &Store{games: map[string]*game.State{}, lib: lib, dir: dir}
+	return &Store{
+		games:   map[string]*game.State{},
+		history: map[string][]RunSummary{},
+		lib:     lib,
+		dir:     dir,
+	}
 }
 
 // Get returns a snapshot of the session's state, loading it from disk on a
@@ -134,6 +151,64 @@ func writeFileAtomic(path string, b []byte) error {
 		return err
 	}
 	return os.Rename(tmp.Name(), path)
+}
+
+// CompleteRun appends a run that just reached an ending scene to the
+// session's history and persists it.
+func (st *Store) CompleteRun(session string, s *game.State) error {
+	run := RunSummary{
+		Ending:      st.lib.Scenes[s.SceneID].Ending,
+		Stats:       s.Stats,
+		Turns:       s.Turns,
+		CardsPlayed: s.CardsPlayed,
+		Date:        time.Now(),
+	}
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	runs := append(st.historyLocked(session), run)
+	st.history[session] = runs
+	if st.dir == "" {
+		return nil
+	}
+	if err := os.MkdirAll(st.dir, 0o755); err != nil {
+		return err
+	}
+	b, err := json.MarshalIndent(runs, "", "  ")
+	if err != nil {
+		return err
+	}
+	return writeFileAtomic(st.historyPath(session), b)
+}
+
+// History returns the session's completed runs, oldest first, loading them
+// from disk on a cache miss. A corrupt history file reads as empty.
+func (st *Store) History(session string) []RunSummary {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	return slices.Clone(st.historyLocked(session))
+}
+
+func (st *Store) historyLocked(session string) []RunSummary {
+	if runs, ok := st.history[session]; ok {
+		return runs
+	}
+	if st.dir == "" {
+		return nil
+	}
+	b, err := os.ReadFile(st.historyPath(session))
+	if err != nil {
+		return nil
+	}
+	var runs []RunSummary
+	if json.Unmarshal(b, &runs) != nil {
+		return nil // corrupt history: start over rather than fail the request
+	}
+	st.history[session] = runs
+	return runs
+}
+
+func (st *Store) historyPath(session string) string {
+	return filepath.Join(st.dir, "history-"+session+".json")
 }
 
 func (st *Store) path(session string) string {

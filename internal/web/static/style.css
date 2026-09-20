@@ -83,6 +83,20 @@ main {
 .ending-badge.settle  { color: #8fae7a; border-color: #8fae7a; }
 .ending-badge.defeat  { color: #b06a5a; border-color: #b06a5a; }
 .ending-badge.death   { color: #c25b4e; border-color: #c25b4e; }
+.ending-badge.undiscovered { color: var(--muted); border-color: var(--line); }
+
+.campaigns { color: var(--muted); margin: 0.75rem 0 0; }
+
+.run-summary { color: var(--muted); margin: 0.75rem 0 0; }
+
+.gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.gallery-tile { padding: 0.15rem; }
 
 button {
   background: #2e2822;
