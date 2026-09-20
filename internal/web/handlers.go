@@ -163,7 +163,7 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request, session string) 
 		case r.FormValue("choice") != "":
 			return s.applyChoice(st, r.FormValue("choice"))
 		case r.FormValue("shuffle") != "":
-			return st.Shuffle()
+			return st.Shuffle(s.store.lib)
 		case r.FormValue("scout") != "":
 			_, err := st.Peek(s.store.lib)
 			return err

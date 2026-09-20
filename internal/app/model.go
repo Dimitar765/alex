@@ -96,7 +96,7 @@ func (m *Model) Scout() Result {
 // Shuffle recycles the discard pile into the deck for one treasury.
 func (m *Model) Shuffle() Result {
 	return m.act(func(st *game.State) error {
-		return st.Shuffle()
+		return st.Shuffle(m.lib)
 	})
 }
 

@@ -5,62 +5,118 @@
     "choices": [
       {
         "text": "Put down the Greek revolt first — Thebes has torn down your garrison",
-        "effects": [{ "kind": "goto", "next": "thebes" }]
+        "effects": [
+          {
+            "kind": "goto",
+            "next": "thebes"
+          }
+        ]
       },
       {
         "text": "Secure the north — Thrace and Illyria before Asia",
-        "effects": [{ "kind": "goto", "next": "balkans" }]
+        "effects": [
+          {
+            "kind": "goto",
+            "next": "balkans"
+          }
+        ]
       },
       {
         "text": "Cross the Hellespont at once — Asia waits for no one",
-        "effects": [{ "kind": "goto", "next": "granicus" }]
+        "effects": [
+          {
+            "kind": "goto",
+            "next": "granicus"
+          }
+        ]
       }
     ]
   },
   {
     "id": "thebes",
     "text": "Thebes, 335 BC. The city that once held the pass against Persia now bets everything on a rumor of your death. From the Cadmea you watch exiles and democrats dig through the frost to undermine the walls their grandfathers built. The Greek cities are watching what you do here.",
-    "cards": ["greek_mercenaries"],
+    "cards": [
+      "greek_mercenaries"
+    ],
     "choices": [
       {
         "text": "Level the city — let Greece read the price of revolt in the rubble",
         "effects": [
-          { "kind": "stat", "delta": { "legacy": 2, "treasury": 1 } },
-          { "kind": "goto", "next": "balkans" }
+          {
+            "kind": "stat",
+            "delta": {
+              "legacy": 2,
+              "treasury": 1
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "balkans"
+          }
         ]
       },
       {
         "text": "Pardon the city for a fine and a garrison — fear fades, gold does not",
         "effects": [
-          { "kind": "stat", "delta": { "legacy": 1, "treasury": 2 } },
-          { "kind": "goto", "next": "balkans" }
+          {
+            "kind": "stat",
+            "delta": {
+              "legacy": 1,
+              "treasury": 2
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "balkans"
+          }
         ]
       }
     ]
   },
   {
     "id": "balkans",
+    "threat": 0,
     "text": "The Triballi break at Mount Haemus and the Illyrian war-bands scatter into their hills. At the Danube, Scythian riders shadow your camp by night, counting fires, weighing your youth.",
-    "cards": ["scythian_horse"],
+    "cards": [
+      "scythian_horse"
+    ],
     "choices": [
       {
         "text": "Crush the Triballi root and branch — let the north learn the price of defiance",
         "effects": [
-          { "kind": "stat", "delta": { "army": 1, "legacy": 1 } },
-          { "kind": "goto", "next": "granicus" }
+          {
+            "kind": "stat",
+            "delta": {
+              "army": 1,
+              "legacy": 1
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "granicus"
+          }
         ]
       },
       {
         "text": "Turn the Scythian clans with silver and oaths of friendship",
         "effects": [
-          { "kind": "stat", "delta": { "treasury": 2 } },
-          { "kind": "goto", "next": "granicus" }
+          {
+            "kind": "stat",
+            "delta": {
+              "treasury": 2
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "granicus"
+          }
         ]
       }
     ]
   },
   {
     "id": "granicus",
+    "threat": 1,
     "text": "The River Granicus runs fast and shallow in the spring melt. On the far bank, Memnon of Rhodes waits with the Persian cavalry, spears glinting. Parmenion counsels camp and dawn; the afternoon sun will be in their eyes — and yours.",
     "choices": [
       {
@@ -74,15 +130,33 @@
               {
                 "weight": 3,
                 "effects": [
-                  { "kind": "stat", "delta": { "legacy": 3, "army": 1 } },
-                  { "kind": "goto", "next": "issus" }
+                  {
+                    "kind": "stat",
+                    "delta": {
+                      "legacy": 3,
+                      "army": 1
+                    }
+                  },
+                  {
+                    "kind": "goto",
+                    "next": "issus"
+                  }
                 ]
               },
               {
                 "weight": 1,
                 "effects": [
-                  { "kind": "stat", "delta": { "army": -2, "legacy": 1 } },
-                  { "kind": "goto", "next": "issus" }
+                  {
+                    "kind": "stat",
+                    "delta": {
+                      "army": -2,
+                      "legacy": 1
+                    }
+                  },
+                  {
+                    "kind": "goto",
+                    "next": "issus"
+                  }
                 ]
               }
             ]
@@ -92,24 +166,43 @@
       {
         "text": "Send the phalanx across in column and grind the bank flat",
         "effects": [
-          { "kind": "stat", "delta": { "legacy": 1, "army": -1 } },
-          { "kind": "goto", "next": "issus" }
+          {
+            "kind": "stat",
+            "delta": {
+              "legacy": 1,
+              "army": -1
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "issus"
+          }
         ]
       },
       {
         "text": "Withdraw and recross another day — the king who hurries meets his ferryman early",
-        "effects": [{ "kind": "goto", "next": "balkans" }]
+        "effects": [
+          {
+            "kind": "goto",
+            "next": "balkans"
+          }
+        ]
       }
     ]
   },
   {
     "id": "issus",
+    "threat": 1,
     "text": "Issus, 333 BC. You have stolen behind him. Darius himself waits in the center of the Great Line, his household behind it — his mother, his wife, his children. The Persian host is wider than a city and deeper than a phalanx is long.",
-    "cards": ["persian_ransom"],
+    "cards": [
+      "persian_ransom"
+    ],
     "choices": [
       {
         "text": "Anchor the left and break the center where the Great King stands",
-        "requiresStat": { "army": 3 },
+        "requiresStat": {
+          "army": 3
+        },
         "effects": [
           {
             "kind": "random",
@@ -117,15 +210,33 @@
               {
                 "weight": 3,
                 "effects": [
-                  { "kind": "stat", "delta": { "legacy": 2, "treasury": 3 } },
-                  { "kind": "goto", "next": "tyre" }
+                  {
+                    "kind": "stat",
+                    "delta": {
+                      "legacy": 2,
+                      "treasury": 3
+                    }
+                  },
+                  {
+                    "kind": "goto",
+                    "next": "tyre"
+                  }
                 ]
               },
               {
                 "weight": 1,
                 "effects": [
-                  { "kind": "stat", "delta": { "army": -2, "legacy": 1 } },
-                  { "kind": "goto", "next": "tyre" }
+                  {
+                    "kind": "stat",
+                    "delta": {
+                      "army": -2,
+                      "legacy": 1
+                    }
+                  },
+                  {
+                    "kind": "goto",
+                    "next": "tyre"
+                  }
                 ]
               }
             ]
@@ -135,20 +246,33 @@
       {
         "text": "Refuse the field; take the coastal cities and their harbors instead",
         "effects": [
-          { "kind": "stat", "delta": { "treasury": 1 } },
-          { "kind": "goto", "next": "tyre" }
+          {
+            "kind": "stat",
+            "delta": {
+              "treasury": 1
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "tyre"
+          }
         ]
       }
     ]
   },
   {
     "id": "tyre",
+    "threat": 1,
     "text": "Tyre: an island fortress with the best fleet in the world and walls grown from the sea. They offered you token submission and forbade you their temple — an old city's arithmetic of pride. The mole you mean to build will take months and forests.",
-    "cards": ["siege_ladder"],
+    "cards": [
+      "siege_ladder"
+    ],
     "choices": [
       {
         "text": "Build the mole — join island to shore and make the sea itself your road",
-        "requiresStat": { "treasury": 2 },
+        "requiresStat": {
+          "treasury": 2
+        },
         "effects": [
           {
             "kind": "random",
@@ -156,15 +280,34 @@
               {
                 "weight": 3,
                 "effects": [
-                  { "kind": "stat", "delta": { "treasury": -2, "legacy": 3 } },
-                  { "kind": "goto", "next": "egypt" }
+                  {
+                    "kind": "stat",
+                    "delta": {
+                      "treasury": -2,
+                      "legacy": 3
+                    }
+                  },
+                  {
+                    "kind": "goto",
+                    "next": "egypt"
+                  }
                 ]
               },
               {
                 "weight": 1,
                 "effects": [
-                  { "kind": "stat", "delta": { "treasury": -2, "army": -2, "legacy": 2 } },
-                  { "kind": "goto", "next": "egypt" }
+                  {
+                    "kind": "stat",
+                    "delta": {
+                      "treasury": -2,
+                      "army": -2,
+                      "legacy": 2
+                    }
+                  },
+                  {
+                    "kind": "goto",
+                    "next": "egypt"
+                  }
                 ]
               }
             ]
@@ -174,9 +317,21 @@
       {
         "text": "Spare the siege — let Tyre's fleet sail under your banner instead",
         "effects": [
-          { "kind": "stat", "delta": { "legacy": -1, "treasury": 1 } },
-          { "kind": "gain_card", "cardId": "nearchus_fleet" },
-          { "kind": "goto", "next": "egypt" }
+          {
+            "kind": "stat",
+            "delta": {
+              "legacy": -1,
+              "treasury": 1
+            }
+          },
+          {
+            "kind": "gain_card",
+            "cardId": "nearchus_fleet"
+          },
+          {
+            "kind": "goto",
+            "next": "egypt"
+          }
         ]
       }
     ]
@@ -184,7 +339,9 @@
   {
     "id": "egypt",
     "text": "Egypt receives you as a liberator and a pharaoh without a fight. Memphis feasts you; the priests of Ptah know a son of Ammon when they see one coming. West of the Delta lies a fishing village where a harbor dreams of being the hinge of the world.",
-    "cards": ["nile_grain"],
+    "cards": [
+      "nile_grain"
+    ],
     "choices": [
       {
         "text": "Cross the desert to the oracle of Ammon at Siwa",
@@ -195,16 +352,35 @@
               {
                 "weight": 2,
                 "effects": [
-                  { "kind": "stat", "delta": { "legacy": 1 } },
-                  { "kind": "gain_card", "cardId": "siwa_oracle" },
-                  { "kind": "goto", "next": "gaugamela" }
+                  {
+                    "kind": "stat",
+                    "delta": {
+                      "legacy": 1
+                    }
+                  },
+                  {
+                    "kind": "gain_card",
+                    "cardId": "siwa_oracle"
+                  },
+                  {
+                    "kind": "goto",
+                    "next": "gaugamela"
+                  }
                 ]
               },
               {
                 "weight": 1,
                 "effects": [
-                  { "kind": "stat", "delta": { "army": -1 } },
-                  { "kind": "goto", "next": "gaugamela" }
+                  {
+                    "kind": "stat",
+                    "delta": {
+                      "army": -1
+                    }
+                  },
+                  {
+                    "kind": "goto",
+                    "next": "gaugamela"
+                  }
                 ]
               }
             ]
@@ -214,20 +390,34 @@
       {
         "text": "Stay on the coast and found Alexandria between the marsh and the sea",
         "effects": [
-          { "kind": "stat", "delta": { "legacy": 1, "treasury": 2 } },
-          { "kind": "goto", "next": "gaugamela" }
+          {
+            "kind": "stat",
+            "delta": {
+              "legacy": 1,
+              "treasury": 2
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "gaugamela"
+          }
         ]
       }
     ]
   },
   {
     "id": "gaugamela",
+    "threat": 1,
     "text": "Gaugamela, 331 BC. Darius has had two years to choose his ground, and he has chosen well: a plain wide enough for scythed chariots and elephants, leveled for his wheeling horse. Tonight his torches outnumber the stars.",
-    "cards": ["parmenion_wing"],
+    "cards": [
+      "parmenion_wing"
+    ],
     "choices": [
       {
         "text": "Anchor the line, refuse both wings, and punch through the Great King's guard",
-        "requiresStat": { "army": 6 },
+        "requiresStat": {
+          "army": 6
+        },
         "effects": [
           {
             "kind": "random",
@@ -235,13 +425,28 @@
               {
                 "weight": 3,
                 "effects": [
-                  { "kind": "stat", "delta": { "legacy": 3, "treasury": 3, "army": -1 } },
-                  { "kind": "goto", "next": "persepolis" }
+                  {
+                    "kind": "stat",
+                    "delta": {
+                      "legacy": 3,
+                      "treasury": 3,
+                      "army": -1
+                    }
+                  },
+                  {
+                    "kind": "goto",
+                    "next": "persepolis"
+                  }
                 ]
               },
               {
                 "weight": 1,
-                "effects": [{ "kind": "goto", "next": "end_rout" }]
+                "effects": [
+                  {
+                    "kind": "goto",
+                    "next": "end_rout"
+                  }
+                ]
               }
             ]
           }
@@ -249,17 +454,36 @@
       },
       {
         "text": "Bribe the eastern satraps until the Great King's flanks melt away",
-        "requiresStat": { "treasury": 4 },
+        "requiresStat": {
+          "treasury": 4
+        },
         "effects": [
-          { "kind": "stat", "delta": { "treasury": -3, "legacy": 1 } },
-          { "kind": "goto", "next": "persepolis" }
+          {
+            "kind": "stat",
+            "delta": {
+              "treasury": -3,
+              "legacy": 1
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "persepolis"
+          }
         ]
       },
       {
         "text": "Shadow the Persian host, cut its supply, and let the plain starve first",
         "effects": [
-          { "kind": "stat", "delta": { "army": 1 } },
-          { "kind": "goto", "next": "persepolis" }
+          {
+            "kind": "stat",
+            "delta": {
+              "army": 1
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "persepolis"
+          }
         ]
       }
     ]
@@ -271,26 +495,53 @@
   },
   {
     "id": "persepolis",
+    "threat": 1,
     "text": "Persepolis, the staircased city of kings. The treasuries hold five thousand talents — more silver than the world has words for. In the great hall where Xerxes planned his war on Hellas, Thais of Athens puts a torch in your hand and the army roars for the sight.",
-    "cards": ["war_chest"],
+    "cards": [
+      "war_chest"
+    ],
     "choices": [
       {
         "text": "Take the diadem: stay in the East, and rule both worlds from Persepolis",
-        "requiresStat": { "treasury": 8 },
-        "effects": [{ "kind": "goto", "next": "end_persian" }]
+        "requiresStat": {
+          "treasury": 8
+        },
+        "effects": [
+          {
+            "kind": "goto",
+            "next": "end_persian"
+          }
+        ]
       },
       {
         "text": "Burn the palace of Xerxes — let Hellas hear the fire from across the sea",
         "effects": [
-          { "kind": "stat", "delta": { "treasury": 3, "legacy": 2 } },
-          { "kind": "goto", "next": "ecbatana" }
+          {
+            "kind": "stat",
+            "delta": {
+              "treasury": 3,
+              "legacy": 2
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "ecbatana"
+          }
         ]
       },
       {
         "text": "Seal the treasuries and leave the halls standing — you are a king, not a raider",
         "effects": [
-          { "kind": "stat", "delta": { "treasury": 4 } },
-          { "kind": "goto", "next": "ecbatana" }
+          {
+            "kind": "stat",
+            "delta": {
+              "treasury": 4
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "ecbatana"
+          }
         ]
       }
     ]
@@ -302,54 +553,100 @@
   },
   {
     "id": "ecbatana",
+    "threat": 0,
     "text": "Ecbatana, 330 BC. You arrive with the Companion cavalry in eleven days, and it means nothing: Darius is gone east with a wagon train of gold and the last of his guards, dragged toward Bactria by men who will tire of him before you tire of the chase. The royal road runs ahead of you like a seam of silver.",
-    "cards": ["royal_road"],
+    "cards": [
+      "royal_road"
+    ],
     "choices": [
       {
         "text": "Force-march the Companions after him — ride the Great King down yourself",
         "effects": [
-          { "kind": "stat", "delta": { "army": -1, "legacy": 1 } },
-          { "kind": "goto", "next": "bactria" }
+          {
+            "kind": "stat",
+            "delta": {
+              "army": -1,
+              "legacy": 1
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "bactria"
+          }
         ]
       },
       {
         "text": "Send Parmenion by the royal road with the baggage and the treasury",
         "effects": [
-          { "kind": "stat", "delta": { "treasury": 2 } },
-          { "kind": "goto", "next": "bactria" }
+          {
+            "kind": "stat",
+            "delta": {
+              "treasury": 2
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "bactria"
+          }
         ]
       }
     ]
   },
   {
     "id": "bactria",
+    "threat": 1,
     "text": "Bactria, the ceiling of the world. Bessus, who called himself Great King after burning his own, melts into the hills with the Sogdian rock-nests behind him. Every column you send comes back lighter; every fortress you take spawns two more behind it. This is war without a battle-line.",
-    "cards": ["sogdian_rock"],
+    "cards": [
+      "sogdian_rock"
+    ],
     "choices": [
       {
         "text": "Bind the hill clans with a marriage — take Roxane of Bactria as your wife",
         "effects": [
-          { "kind": "gain_card", "cardId": "roxane" },
-          { "kind": "stat", "delta": { "army": 1 } },
-          { "kind": "goto", "next": "hydaspes" }
+          {
+            "kind": "gain_card",
+            "cardId": "roxane"
+          },
+          {
+            "kind": "stat",
+            "delta": {
+              "army": 1
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "hydaspes"
+          }
         ]
       },
       {
         "text": "Winter in the hills until Bessus is dragged back to you in chains",
         "effects": [
-          { "kind": "stat", "delta": { "legacy": 1, "army": -1 } },
-          { "kind": "goto", "next": "hydaspes" }
+          {
+            "kind": "stat",
+            "delta": {
+              "legacy": 1,
+              "army": -1
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "hydaspes"
+          }
         ]
       }
     ]
   },
   {
     "id": "hydaspes",
+    "threat": 1,
     "text": "The monsoon has been on the land for weeks. On the far bank of the Hydaspes, Porus waits — a king nine feet tall in the telling, with two hundred elephants in the mist. Every night your campfires shift along the bank; every night his host mirrors you, awake in the rain.",
     "choices": [
       {
         "text": "Cross the flooded river at night, miles upstream, and fall on his flank at dawn",
-        "requiresStat": { "army": 8 },
+        "requiresStat": {
+          "army": 8
+        },
         "effects": [
           {
             "kind": "random",
@@ -357,18 +654,45 @@
               {
                 "weight": 2,
                 "effects": [
-                  { "kind": "stat", "delta": { "legacy": 3, "army": 1 } },
-                  { "kind": "remove_card", "cardId": "bucephalus" },
-                  { "kind": "gain_card", "cardId": "elephant_corps" },
-                  { "kind": "goto", "next": "hyphasis" }
+                  {
+                    "kind": "stat",
+                    "delta": {
+                      "legacy": 3,
+                      "army": 1
+                    }
+                  },
+                  {
+                    "kind": "remove_card",
+                    "cardId": "bucephalus"
+                  },
+                  {
+                    "kind": "gain_card",
+                    "cardId": "elephant_corps"
+                  },
+                  {
+                    "kind": "goto",
+                    "next": "hyphasis"
+                  }
                 ]
               },
               {
                 "weight": 1,
                 "effects": [
-                  { "kind": "stat", "delta": { "army": -3, "legacy": 1 } },
-                  { "kind": "remove_card", "cardId": "bucephalus" },
-                  { "kind": "goto", "next": "hyphasis" }
+                  {
+                    "kind": "stat",
+                    "delta": {
+                      "army": -3,
+                      "legacy": 1
+                    }
+                  },
+                  {
+                    "kind": "remove_card",
+                    "cardId": "bucephalus"
+                  },
+                  {
+                    "kind": "goto",
+                    "next": "hyphasis"
+                  }
                 ]
               }
             ]
@@ -380,41 +704,87 @@
         "requiresCard": "royal_decree",
         "consumesCard": true,
         "effects": [
-          { "kind": "stat", "delta": { "legacy": 1, "treasury": 1 } },
-          { "kind": "gain_card", "cardId": "elephant_corps" },
-          { "kind": "goto", "next": "hyphasis" }
+          {
+            "kind": "stat",
+            "delta": {
+              "legacy": 1,
+              "treasury": 1
+            }
+          },
+          {
+            "kind": "gain_card",
+            "cardId": "elephant_corps"
+          },
+          {
+            "kind": "goto",
+            "next": "hyphasis"
+          }
         ]
       },
       {
         "text": "Refuse the crossing — fortify the bank and let the monsoon argue with Porus instead",
-        "effects": [{ "kind": "goto", "next": "hyphasis" }]
+        "effects": [
+          {
+            "kind": "goto",
+            "next": "hyphasis"
+          }
+        ]
       }
     ]
   },
   {
     "id": "hyphasis",
+    "threat": 0,
     "text": "The Hyphasis river, the edge of the known world. Beyond it: the Ganges, and an empire that fields elephants by the thousand. Your army has marched eleven thousand miles and stands at the water in silence. Coenus speaks for them all: king, we would follow you anywhere but home comes first. The men watch you climb the dais.",
     "choices": [
       {
         "text": "Leap from the dais and harangue them — they wept at Troy's tenth year too",
-        "requiresStat": { "legacy": 8 },
+        "requiresStat": {
+          "legacy": 8
+        },
         "effects": [
-          { "kind": "stat", "delta": { "army": 2, "legacy": 1 } },
-          { "kind": "goto", "next": "gedrosia" }
+          {
+            "kind": "stat",
+            "delta": {
+              "army": 2,
+              "legacy": 1
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "gedrosia"
+          }
         ]
       },
       {
         "text": "Yield to their tears; raise twelve altars to the end of the world and turn for home",
         "effects": [
-          { "kind": "stat", "delta": { "legacy": 1 } },
-          { "kind": "goto", "next": "gedrosia" }
+          {
+            "kind": "stat",
+            "delta": {
+              "legacy": 1
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "gedrosia"
+          }
         ]
       },
       {
         "text": "Drive them on at the spear's point — the Ocean is two rivers away",
         "effects": [
-          { "kind": "stat", "delta": { "army": -3, "legacy": -2 } },
-          { "kind": "goto", "next": "end_mutiny" }
+          {
+            "kind": "stat",
+            "delta": {
+              "army": -3,
+              "legacy": -2
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "end_mutiny"
+          }
         ]
       }
     ]
@@ -426,13 +796,23 @@
   },
   {
     "id": "gedrosia",
+    "threat": 1,
     "text": "The way home lies through Gedrosia, where the land itself has opinions. Sixty days of desert: wells that lie, guides who vanish, a coast so hungry that even the fleet's grain is a rumor. Nearchus swears the ships can shadow you with water and wheat — if the monsoon holds.",
     "choices": [
       {
         "text": "March the columns into the desert with the men — share their thirst, or the name dies here",
         "effects": [
-          { "kind": "stat", "delta": { "army": -3, "legacy": 2 } },
-          { "kind": "goto", "next": "babylon" }
+          {
+            "kind": "stat",
+            "delta": {
+              "army": -3,
+              "legacy": 2
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "babylon"
+          }
         ]
       },
       {
@@ -440,24 +820,46 @@
         "requiresCard": "nearchus_fleet",
         "consumesCard": true,
         "effects": [
-          { "kind": "stat", "delta": { "legacy": 1, "army": -1 } },
-          { "kind": "goto", "next": "babylon" }
+          {
+            "kind": "stat",
+            "delta": {
+              "legacy": 1,
+              "army": -1
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "babylon"
+          }
         ]
       }
     ]
   },
   {
     "id": "babylon",
+    "threat": 0,
     "text": "Babylon, 323 BC. You have done what no man since the god-kings: the world from the Adriatic to the Indus under one seal. Nearchus has sailed the ocean; Arabia is next, then the Pillars of Heracles. But the feasts run long, the wounds run old, and a fever has come into the city with the spring.",
     "choices": [
       {
         "text": "Rule both worlds from Babylon — the city of cities shall be the heart of empire",
-        "requiresStat": { "legacy": 12 },
-        "effects": [{ "kind": "goto", "next": "end_triumph" }]
+        "requiresStat": {
+          "legacy": 12
+        },
+        "effects": [
+          {
+            "kind": "goto",
+            "next": "end_triumph"
+          }
+        ]
       },
       {
         "text": "Dream aloud of Arabia and the Pillars of Heracles — the fever is nothing",
-        "effects": [{ "kind": "goto", "next": "end_immortal" }]
+        "effects": [
+          {
+            "kind": "goto",
+            "next": "end_immortal"
+          }
+        ]
       }
     ]
   },
@@ -470,5 +872,75 @@
     "id": "end_immortal",
     "text": "The fever does not break. In the palace of Nebuchadnezzar, thirty-two years old, you ask for the strongest. The generals carve the world into pieces before your body is cold — and yet: Alexandria in Egypt, Alexandria in Bactria, Alexandria on the Indus. Seventeen cities carry your name, and the name outlives the empire. They argue about you still, which is its own kind of Olympus.",
     "ending": "legacy"
+  },
+  {
+    "id": "battle",
+    "threat": 2,
+    "text": "Gaugamela's plain, but under a sky that has gone wrong. The Great King has stopped fleeing — Bessus and Mazeus have massed the royal army around your small square of Macedonians, and the scouts speak of scythed chariots in their hundreds. There is no marching past this. There is only through it.",
+    "choices": [
+      {
+        "text": "Hold the line at the pass — the phalanx has never broken",
+        "requiresStat": {
+          "army": 4
+        },
+        "effects": [
+          {
+            "kind": "stat",
+            "delta": {
+              "legacy": 4,
+              "army": 1
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "end_triumph"
+          }
+        ]
+      },
+      {
+        "text": "Lead the companion charge yourself — history or death",
+        "requiresCard": "bucephalus",
+        "consumesCard": true,
+        "effects": [
+          {
+            "kind": "stat",
+            "delta": {
+              "legacy": 6
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "end_immortal"
+          }
+        ]
+      },
+      {
+        "text": "Empty the war chest to buy the satraps' loyalty",
+        "requiresStat": {
+          "treasury": 5
+        },
+        "effects": [
+          {
+            "kind": "stat",
+            "delta": {
+              "treasury": -5
+            }
+          },
+          {
+            "kind": "goto",
+            "next": "end_persian"
+          }
+        ]
+      },
+      {
+        "text": "Strike camp under cover of night — live to fight another day",
+        "effects": [
+          {
+            "kind": "goto",
+            "next": "end_rout"
+          }
+        ]
+      }
+    ]
   }
 ]

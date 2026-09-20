@@ -122,7 +122,7 @@ func TestPlayCardEmitsStatEffectAndRefills(t *testing.T) {
 	if len(v.Hand) != 2 || v.DeckTotal != 2 {
 		t.Fatalf("hand = %d, total owned = %d, want 2/2", len(v.Hand), v.DeckTotal)
 	}
-	if len(v.Log) == 0 || v.Log[0] != "Played Free Blade. Legacy +1." {
+	if len(v.Log) == 0 || v.Log[0] != "Played Free Blade. Legacy +1, Threat +1." {
 		t.Fatalf("log head = %q", v.Log[0])
 	}
 }
