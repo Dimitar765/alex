@@ -39,18 +39,43 @@ type State struct {
 
 	Turns       int // successful actions taken (choices and card plays)
 	CardsPlayed int // card plays among those turns
+
+	rng *rand.Rand // optional deterministic source; nil uses the global
 }
 
 // NewState builds a fresh state from the library's starting cards: a
 // shuffled opening deck and a hand of HandSize.
 func NewState(lib *content.Library, startScene string) *State {
-	s := &State{SceneID: startScene}
+	return NewStateWithRNG(lib, startScene, nil)
+}
+
+// NewStateWithRNG is NewState with an explicit random source, used by the
+// simulator for reproducible runs. A nil rng falls back to the global one.
+func NewStateWithRNG(lib *content.Library, startScene string, rng *rand.Rand) *State {
+	s := &State{SceneID: startScene, rng: rng}
 	for _, c := range lib.StartingCards() {
 		s.Deck = append(s.Deck, c.ID)
 	}
-	rand.Shuffle(len(s.Deck), func(i, j int) { s.Deck[i], s.Deck[j] = s.Deck[j], s.Deck[i] })
+	s.shuffle(len(s.Deck), func(i, j int) { s.Deck[i], s.Deck[j] = s.Deck[j], s.Deck[i] })
 	s.drawUp()
 	return s
+}
+
+// shuffle randomizes n elements via the state's random source.
+func (s *State) shuffle(n int, swap func(i, j int)) {
+	if s.rng != nil {
+		s.rng.Shuffle(n, swap)
+		return
+	}
+	rand.Shuffle(n, swap)
+}
+
+// intN returns a random value in [0,n) from the state's random source.
+func (s *State) intN(n int) int {
+	if s.rng != nil {
+		return s.rng.IntN(n)
+	}
+	return rand.IntN(n)
 }
 
 // Clone returns a deep copy of the state. Mutating the clone never affects
@@ -228,7 +253,7 @@ func (s *State) apply(e content.Effect, lib *content.Library, parts *[]string) e
 		for _, o := range e.Outcomes {
 			total += o.Weight
 		}
-		pick := rand.IntN(total)
+		pick := s.intN(total)
 		for _, o := range e.Outcomes {
 			if pick < o.Weight {
 				return s.applyEffects(o.Effects, lib, parts)
@@ -263,7 +288,7 @@ func (s *State) drawUp() {
 			}
 			s.Deck = s.Discard
 			s.Discard = nil
-			rand.Shuffle(len(s.Deck), func(i, j int) { s.Deck[i], s.Deck[j] = s.Deck[j], s.Deck[i] })
+			s.shuffle(len(s.Deck), func(i, j int) { s.Deck[i], s.Deck[j] = s.Deck[j], s.Deck[i] })
 		}
 		s.Hand = append(s.Hand, s.Deck[len(s.Deck)-1])
 		s.Deck = s.Deck[:len(s.Deck)-1]

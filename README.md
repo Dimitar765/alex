@@ -24,6 +24,7 @@ one of five endings: triumph, legacy, settle, or two flavors of defeat.
 |---|---|
 | `internal/content` | Data-driven schema (cards, scenes, effects) + full load-time validation |
 | `internal/game` | Rules engine: state, choices, card play, costs, randomness |
+| `internal/sim` | Headless random-greedy simulator: soft-lock proofs and ending distribution |
 | `internal/web` | HTTP server: templates, htmx partials, cookie sessions, JSON saves |
 | root (`assets`) | Embeds `content/` so the binary is self-contained |
 
@@ -57,6 +58,21 @@ effects nest recursively.
 
 Stats are a closed set: `legacy`, `army`, `treasury`. Endings are a closed
 set: `triumph`, `legacy`, `settle`, `defeat`, `death`.
+
+## Balance tooling
+
+After editing content, simulate campaigns to check for soft-locks and
+ending distribution:
+
+```
+go run ./cmd/simulate -runs 2000 -seed 1
+```
+
+The policy is random-greedy (uniform choices, occasional card plays), so
+read defeat-heavy endings with that in mind — it deliberately picks the
+mutiny, humans do not. The same seed always reproduces the same runs, and
+`internal/sim` tests assert zero stuck runs and full ending reachability
+on the shipped campaign.
 
 ## Saves
 
