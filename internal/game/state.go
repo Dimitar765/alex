@@ -174,6 +174,18 @@ func (s *State) Shuffle() error {
 	return nil
 }
 
+// Peek spends the turn revealing the deck's top card, recorded in the
+// log. It fails when the deck is empty.
+func (s *State) Peek(lib *content.Library) (string, error) {
+	if len(s.Deck) == 0 {
+		return "", errors.New("the deck is empty — nothing to scout")
+	}
+	top := s.Deck[len(s.Deck)-1]
+	s.Turns++
+	s.appendLog("Scouted the deck: next card is " + displayName(top, lib.Cards))
+	return top, nil
+}
+
 // arrive grants the entered scene's regional card pool on first entry,
 // stacking the cards on the deck so they are drawn first.
 func (s *State) arrive(lib *content.Library, parts *[]string) {

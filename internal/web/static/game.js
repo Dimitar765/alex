@@ -102,6 +102,10 @@
           noise(0.12, 900);
           setTimeout(function () { noise(0.12, 1200); }, 90);
           break;
+        case "scout":
+          tone(587, 0.05, { type: "sine", gain: 0.06 });
+          setTimeout(function () { tone(784, 0.08, { type: "sine", gain: 0.05 }); }, 70);
+          break;
         case "error":
           tone(147, 0.22, { type: "sawtooth", gain: 0.05, slideTo: 98 });
           break;
@@ -124,12 +128,15 @@
     }
   };
 
-  // Choice takes: soft two-note tick; the shuffle gets a double swish.
+  // Choice takes: soft two-note tick; the deck actions get their own cues.
   document.addEventListener("submit", function (e) {
     var form = e.target;
     if (!form.classList || form.classList.contains("card")) return;
     if (form.action && form.action.indexOf("/game/action") !== -1) {
-      sfx.play(form.classList.contains("shuffle-form") ? "shuffle" : "choice");
+      var cue = "choice";
+      if (form.classList.contains("shuffle-form")) cue = "shuffle";
+      if (form.classList.contains("scout-form")) cue = "scout";
+      sfx.play(cue);
     }
   });
 

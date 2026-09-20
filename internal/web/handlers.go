@@ -59,6 +59,7 @@ type view struct {
 	Endings     []endingTile
 	Deck        []deckEntry
 	DeckTotal   int
+	DeckN       int
 	DiscardN    int
 }
 
@@ -161,6 +162,9 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request, session string) 
 			return s.applyChoice(st, r.FormValue("choice"))
 		case r.FormValue("shuffle") != "":
 			return st.Shuffle()
+		case r.FormValue("scout") != "":
+			_, err := st.Peek(s.store.lib)
+			return err
 		default:
 			return errors.New("no card or choice selected")
 		}
@@ -226,6 +230,7 @@ func (s *Server) buildView(st *game.State, err error) view {
 		v.DeckTotal += counts[id]
 	}
 	v.DiscardN = len(st.Discard)
+	v.DeckN = len(st.Deck)
 
 	log := slices.Clone(st.Log)
 	if err != nil {

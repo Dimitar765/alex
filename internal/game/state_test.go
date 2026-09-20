@@ -43,6 +43,38 @@ func TestNewStateDealsOpeningHand(t *testing.T) {
 	}
 }
 
+func TestPeekRevealsTopWithoutTouchingPiles(t *testing.T) {
+	lib := testLib()
+	s := &State{SceneID: "x", Hand: []string{"a"}, Deck: []string{"b", "c"}}
+	top, err := s.Peek(lib)
+	if err != nil {
+		t.Fatalf("Peek() error = %v", err)
+	}
+	if top != "c" {
+		t.Fatalf("Peek() = %q, want the deck top c", top)
+	}
+	if s.Turns != 1 {
+		t.Fatalf("peek must spend the turn: %d", s.Turns)
+	}
+	if len(s.Deck) != 2 || s.Deck[1] != "c" || len(s.Hand) != 1 {
+		t.Fatalf("peek must not touch piles: deck=%v hand=%v", s.Deck, s.Hand)
+	}
+	if !strings.Contains(strings.Join(s.Log, " | "), "Scouted the deck: next card is Charlie") {
+		t.Fatalf("log must name the scouted card, got %v", s.Log)
+	}
+}
+
+func TestPeekEmptyDeckRefused(t *testing.T) {
+	s := &State{SceneID: "x", Hand: []string{"a"}}
+	_, err := s.Peek(testLib())
+	if err == nil || !strings.Contains(err.Error(), "nothing to scout") {
+		t.Fatalf("Peek() error = %v, want refusal", err)
+	}
+	if s.Turns != 0 {
+		t.Fatalf("refused peek must not spend the turn: %d", s.Turns)
+	}
+}
+
 func TestShuffleRecyclesDiscardAndSpendsTurn(t *testing.T) {
 	lib := testLib()
 	s := &State{SceneID: "x", Hand: []string{"a"}, Deck: []string{"b"}, Discard: []string{"c", "d"}}

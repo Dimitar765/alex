@@ -574,6 +574,25 @@ func TestShuffleActionFlow(t *testing.T) {
 	}
 }
 
+// Scout reveals the deck's top card into the log for the cost of a turn.
+func TestScoutActionFlow(t *testing.T) {
+	c, base := newTestClient(t)
+	startGame(t, c, base)
+
+	b := readBody(t, get(t, c, base+"/"))
+	if strings.Contains(b, `disabled title="The deck is empty"`) {
+		t.Fatal("scout must be enabled with a stocked deck")
+	}
+	resp := postAction(t, c, base, url.Values{"scout": {"1"}})
+	b = readBody(t, resp)
+	if strings.Contains(b, "Error:") {
+		t.Fatalf("scout failed: %s", b)
+	}
+	if !strings.Contains(b, "Scouted the deck: next card is") {
+		t.Fatalf("log must record the scout, got: %s", b)
+	}
+}
+
 func TestActionWithoutStateRedirectsHome(t *testing.T) {
 	c, base := newTestClient(t)
 	get(t, c, base+"/") // establish session cookie only

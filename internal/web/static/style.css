@@ -350,7 +350,12 @@ button.primary { padding: 0.65rem 1.2rem; }
 
 .deck-row .deck { flex: 1; min-width: 0; }
 
-.shuffle-btn {
+.deck-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.scout-btn, .shuffle-btn {
   font-size: 0.8rem;
   padding: 0.35rem 0.7rem;
   white-space: nowrap;
