@@ -7,8 +7,10 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"goGame/internal/app"
+	"goGame/internal/content"
 	"goGame/internal/game"
 )
 
@@ -172,6 +174,7 @@ type tableScreen struct {
 	shakeT   float64
 
 	statsX, statsY float64 // where the stat row landed last draw
+	meterX, meterY float64 // where the threat meter landed last draw
 	off            *ebiten.Image
 }
 
@@ -403,6 +406,19 @@ func (s *tableScreen) consumeFX(g *Game, effects []app.Effect) {
 				x:    s.statsX, y: s.statsY,
 				life: 0.9, clr: clr,
 			})
+		case app.EffectThreat:
+			clr := rgb(0xd8, 0x84, 0x2c)
+			if e.Delta < 0 {
+				clr = themeGold
+			}
+			if g.model.View().Threat >= game.ThreatAmbush {
+				clr = rgb(0xc2, 0x5b, 0x4e)
+			}
+			s.fxFloats = append(s.fxFloats, floatText{
+				text: fmt.Sprintf("%+d Threat", e.Delta),
+				x:    s.meterX + 240, y: s.meterY,
+				life: 0.9, clr: clr,
+			})
 		case app.EffectCardLeft:
 			if i := slices.Index(s.lastHand, e.CardID); i >= 0 && i < len(s.lastPos) {
 				p := s.lastPos[i]
@@ -542,6 +558,10 @@ func fanPositions(n int, tableW float64) []cardSlot {
 func (s *tableScreen) drawTable(g *Game, dst *ebiten.Image, v *app.View) {
 	l := newLayout()
 	panel(dst, l.scenePanel)
+	if v.SceneID == content.BattleScene {
+		vector.StrokeRect(dst, float32(l.scenePanel.X)+1, float32(l.scenePanel.Y)+1,
+			float32(l.scenePanel.W)-2, float32(l.scenePanel.H)-2, 2, rgb(0xc2, 0x5b, 0x4e), true)
+	}
 
 	textH := wrappedHeight(v.Scene.Text, g.theme.Face(faceScene), l.scenePanel.W-40)
 	drawWrapped(dst, v.Scene.Text, g.theme.Face(faceScene),
@@ -552,6 +572,27 @@ func (s *tableScreen) drawTable(g *Game, dst *ebiten.Image, v *app.View) {
 		v.Stats.Legacy, v.Stats.Army, v.Stats.Treasury)
 	drawText(dst, stats, g.theme.Face(faceBody), l.scenePanel.X+20, statsY, themeGold)
 	s.statsX, s.statsY = l.scenePanel.X+20, statsY
+
+	// Threat meter: ten notches, warn and critical colors as it fills.
+	s.meterX, s.meterY = l.scenePanel.X+20, statsY+34
+	meterClr := themeMuted
+	if v.Threat >= game.ThreatAmbush {
+		meterClr = rgb(0xc2, 0x5b, 0x4e)
+	} else if v.Threat >= game.ThreatRaid {
+		meterClr = rgb(0xd8, 0x84, 0x2c)
+	}
+	drawText(dst, "Threat", g.theme.Face(faceSmall), s.meterX, s.meterY, meterClr)
+	const segW, segH, segGap = 16.0, 10.0, 4.0
+	for i := 0; i < v.MaxThreat; i++ {
+		clr := themeLine
+		if i < v.Threat {
+			clr = meterClr
+		}
+		sx := s.meterX + 58 + float64(i)*(segW+segGap)
+		vector.DrawFilledRect(dst, float32(sx), float32(s.meterY+2), segW, segH, clr, true)
+	}
+	drawText(dst, fmt.Sprintf("%d/%d", v.Threat, v.MaxThreat), g.theme.Face(faceSmall),
+		s.meterX+58+float64(v.MaxThreat)*(segW+segGap)+6, s.meterY, meterClr)
 
 	if v.Scene.Ending != "" {
 		// Terminal scene: badge, summary, and the way back in.
