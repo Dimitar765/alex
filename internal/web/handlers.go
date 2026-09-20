@@ -49,29 +49,29 @@ func (s *Server) home(w http.ResponseWriter, r *http.Request, session string) {
 func (s *Server) newGame(w http.ResponseWriter, r *http.Request, session string) {
 	st := game.NewState(s.store.lib.CardList(), startScene)
 	st.Session = session
-	s.store.Put(st)
+	if err := s.store.Put(st); err != nil {
+		http.Error(w, "could not save game", http.StatusInternalServerError)
+		return
+	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (s *Server) action(w http.ResponseWriter, r *http.Request, session string) {
-	st := s.store.Get(session)
-	if st == nil {
+	next, err := s.store.Update(session, func(st *game.State) error {
+		switch {
+		case r.FormValue("card") != "":
+			return st.PlayCard(r.FormValue("card"), s.store.lib.Cards)
+		case r.FormValue("choice") != "":
+			return s.applyChoice(st, r.FormValue("choice"))
+		default:
+			return errors.New("no card or choice selected")
+		}
+	})
+	if next == nil {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	var err error
-	switch {
-	case r.FormValue("card") != "":
-		err = st.PlayCard(r.FormValue("card"), s.store.lib.Cards)
-	case r.FormValue("choice") != "":
-		err = s.applyChoice(st, r.FormValue("choice"))
-	default:
-		err = errors.New("no card or choice selected")
-	}
-	if err == nil {
-		s.store.Put(st) // persist after each successful action
-	}
-	s.respondPartial(w, s.buildView(st, err))
+	s.respondPartial(w, s.buildView(next, err))
 }
 
 func (s *Server) applyChoice(st *game.State, idx string) error {

@@ -18,6 +18,21 @@ const (
 	KindGoto     = "goto"
 )
 
+// Stat keys usable in stat-effect deltas. The game engine maps each key to
+// a player field, so adding one requires a matching case there.
+const (
+	StatLegacy   = "legacy"
+	StatArmy     = "army"
+	StatTreasury = "treasury"
+)
+
+// statKeys is the closed set accepted in Effect.Delta.
+var statKeys = map[string]bool{
+	StatLegacy:   true,
+	StatArmy:     true,
+	StatTreasury: true,
+}
+
 // Effect is one game-rule step. Kind selects which other field is used:
 // stat -> Delta, gain_card -> CardID, goto -> Next.
 type Effect struct {
@@ -143,6 +158,11 @@ func validateEffect(e Effect, lib *Library) error {
 	case KindStat:
 		if len(e.Delta) == 0 {
 			return fmt.Errorf("stat effect with empty delta")
+		}
+		for _, k := range slices.Sorted(maps.Keys(e.Delta)) {
+			if !statKeys[k] {
+				return fmt.Errorf("stat effect with unknown stat %q", k)
+			}
 		}
 	case KindGainCard:
 		if _, ok := lib.Cards[e.CardID]; !ok {

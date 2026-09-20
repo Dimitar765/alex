@@ -1,27 +1,38 @@
 package web
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
+	"sync"
 	"testing"
 
 	"goGame/internal/content"
 	"goGame/internal/game"
 )
 
-func TestStorePersistsAndRestores(t *testing.T) {
+func testLib(t *testing.T) *content.Library {
+	t.Helper()
 	lib, err := content.Load(testContent)
 	if err != nil {
 		t.Fatalf("content.Load: %v", err)
 	}
+	return lib
+}
+
+func TestStorePersistsAndRestores(t *testing.T) {
+	lib := testLib(t)
 	dir := t.TempDir()
 
 	st := NewStore(lib, dir)
 	s := game.NewState(lib.CardList(), "title")
 	s.Session = "sess1"
 	s.Stats.Army = 7
-	st.Put(s)
+	if err := st.Put(s); err != nil {
+		t.Fatalf("Put() error = %v", err)
+	}
 
 	if _, err := os.Stat(filepath.Join(dir, "sess1.json")); err != nil {
 		t.Fatalf("save file missing: %v", err)
@@ -39,11 +50,120 @@ func TestStorePersistsAndRestores(t *testing.T) {
 }
 
 func TestStoreGetUnknownSession(t *testing.T) {
-	lib, err := content.Load(testContent)
-	if err != nil {
-		t.Fatalf("content.Load: %v", err)
-	}
-	if got := NewStore(lib, "").Get("nope"); got != nil {
+	if got := NewStore(testLib(t), "").Get("nope"); got != nil {
 		t.Fatalf("Get(unknown) = %+v, want nil", got)
+	}
+}
+
+func TestUpdateCommitsOnSuccess(t *testing.T) {
+	dir := t.TempDir()
+	lib := testLib(t)
+	st := NewStore(lib, dir)
+	s := game.NewState(lib.CardList(), "title")
+	s.Session = "sess"
+	if err := st.Put(s); err != nil {
+		t.Fatalf("Put() error = %v", err)
+	}
+	got, err := st.Update("sess", func(next *game.State) error {
+		next.Stats.Army = 5
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Update() error = %v", err)
+	}
+	if got.Stats.Army != 5 {
+		t.Fatalf("returned state Army = %d, want 5", got.Stats.Army)
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "sess.json"))
+	if err != nil {
+		t.Fatalf("save file missing: %v", err)
+	}
+	if !strings.Contains(string(b), `"Army": 5`) {
+		t.Fatalf("save file not committed, got:\n%s", b)
+	}
+}
+
+func TestUpdateUnknownSessionReturnsNil(t *testing.T) {
+	got, err := NewStore(testLib(t), "").Update("nope", func(*game.State) error {
+		t.Fatal("fn must not run without a state")
+		return nil
+	})
+	if got != nil || err != nil {
+		t.Fatalf("Update(unknown) = (%v, %v), want (nil, nil)", got, err)
+	}
+}
+
+// A failed action must leave both the live state and the save file
+// untouched, even when fn mutated the clone before failing.
+func TestUpdateFailureLeavesStateUntouched(t *testing.T) {
+	dir := t.TempDir()
+	st := NewStore(testLib(t), dir)
+	s := &game.State{Session: "sess", SceneID: "title", Hand: []string{"phalanx"}}
+	if err := st.Put(s); err != nil {
+		t.Fatalf("Put() error = %v", err)
+	}
+
+	got, err := st.Update("sess", func(next *game.State) error {
+		next.Stats.Army = 99 // partial mutation...
+		next.Hand = nil
+		return errors.New("boom") // ...then the action fails
+	})
+	if err == nil || !strings.Contains(err.Error(), "boom") {
+		t.Fatalf("Update() error = %v, want boom", err)
+	}
+	if got.Stats.Army != 0 || len(got.Hand) != 1 {
+		t.Fatalf("rendered state must be the untouched original: %+v", got)
+	}
+	if after := st.Get("sess"); after.Stats.Army != 0 || len(after.Hand) != 1 {
+		t.Fatalf("live state mutated by failed update: %+v", after)
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "sess.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"Army": 0`) {
+		t.Fatalf("save file mutated by failed update:\n%s", b)
+	}
+}
+
+// Concurrent updates to one session must serialize: none are lost.
+func TestUpdateSerializesConcurrentActions(t *testing.T) {
+	dir := t.TempDir()
+	st := NewStore(testLib(t), dir)
+	s := &game.State{Session: "sess", SceneID: "title"}
+	if err := st.Put(s); err != nil {
+		t.Fatalf("Put() error = %v", err)
+	}
+	const n = 32
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = st.Update("sess", func(next *game.State) error {
+				next.Stats.Army++
+				return nil
+			})
+		}()
+	}
+	wg.Wait()
+	if got := st.Get("sess").Stats.Army; got != n {
+		t.Fatalf("Army = %d, want %d (updates must serialize)", got, n)
+	}
+}
+
+func TestAtomicSaveLeavesNoTempFiles(t *testing.T) {
+	dir := t.TempDir()
+	st := NewStore(testLib(t), dir)
+	s := &game.State{Session: "sess", SceneID: "title"}
+	if err := st.Put(s); err != nil {
+		t.Fatalf("Put() error = %v", err)
+	}
+	leftovers, err := filepath.Glob(filepath.Join(dir, "*.tmp"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(leftovers) != 0 {
+		t.Fatalf("temp files left behind: %v", leftovers)
 	}
 }

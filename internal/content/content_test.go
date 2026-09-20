@@ -71,6 +71,17 @@ func TestLoadAggregatesViolations(t *testing.T) {
 	}
 }
 
+func TestLoadUnknownStatKeyRejected(t *testing.T) {
+	cards := `[{"id":"x","name":"X","text":"","effects":[{"kind":"stat","delta":{"legassy":1}}]}]`
+	_, err := Load(fsFrom(t, cards, happyScenes))
+	if err == nil {
+		t.Fatal("Load() must reject unknown stat keys at load time")
+	}
+	if !strings.Contains(err.Error(), "legassy") {
+		t.Fatalf("error must name the bad stat key, got: %v", err)
+	}
+}
+
 func TestLoadUnknownFieldsRejected(t *testing.T) {
 	cards := `[{"id":"x","name":"X","text":"","effects":[],"bogus":1}]`
 	if _, err := Load(fsFrom(t, cards, happyScenes)); err == nil {

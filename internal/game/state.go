@@ -48,6 +48,18 @@ func NewState(cards []content.Card, startScene string) *State {
 	return s
 }
 
+// Clone returns a deep copy of the state. Mutating the clone never affects
+// the original, so callers can apply an action speculatively and commit the
+// result only when it succeeds.
+func (s *State) Clone() *State {
+	c := *s
+	c.Hand = slices.Clone(s.Hand)
+	c.Deck = slices.Clone(s.Deck)
+	c.Discard = slices.Clone(s.Discard)
+	c.Log = slices.Clone(s.Log)
+	return &c
+}
+
 // Choose applies a scene choice. It fails if the choice requires a card that
 // is not in hand. Effects apply in declared order; the hand then refills.
 func (s *State) Choose(choice content.Choice, cards map[string]content.Card) error {
@@ -92,11 +104,11 @@ func (s *State) apply(e content.Effect, cards map[string]content.Card, parts *[]
 		for _, k := range slices.Sorted(maps.Keys(e.Delta)) {
 			v := e.Delta[k]
 			switch k {
-			case "legacy":
+			case content.StatLegacy:
 				s.Stats.Legacy += v
-			case "army":
+			case content.StatArmy:
 				s.Stats.Army += v
-			case "treasury":
+			case content.StatTreasury:
 				s.Stats.Treasury += v
 			default:
 				return fmt.Errorf("unknown stat %q", k)
@@ -149,11 +161,11 @@ func joinParts(parts []string) string {
 
 func statLabel(k string) string {
 	switch k {
-	case "legacy":
+	case content.StatLegacy:
 		return "Legacy"
-	case "army":
+	case content.StatArmy:
 		return "Army"
-	case "treasury":
+	case content.StatTreasury:
 		return "Treasury"
 	}
 	return k

@@ -169,6 +169,18 @@ func TestActionRendersEngineErrorWithout500(t *testing.T) {
 	}
 }
 
+// End-to-end regression for the clone-and-commit store: a refused action
+// (unknown card) must not consume cards from the persisted hand.
+func TestFailedActionDoesNotLoseCards(t *testing.T) {
+	c, base := newTestClient(t)
+	startGame(t, c, base)
+	postForm(t, c, base+"/game/action", url.Values{"card": {"ghost"}})
+	b := readBody(t, get(t, c, base+"/"))
+	if !strings.Contains(b, "Phalanx") {
+		t.Fatal("failed action must not remove cards from the hand")
+	}
+}
+
 func TestActionWithoutStateRedirectsHome(t *testing.T) {
 	c, base := newTestClient(t)
 	get(t, c, base+"/") // establish session cookie only

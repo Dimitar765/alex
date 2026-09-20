@@ -44,6 +44,28 @@ func TestNewStateDealsOpeningHand(t *testing.T) {
 	}
 }
 
+func TestCloneIsIndependent(t *testing.T) {
+	s := &State{
+		SceneID: "x",
+		Stats:   Stats{Legacy: 1},
+		Hand:    []string{"a"},
+		Deck:    []string{"b"},
+		Discard: []string{"c"},
+		Log:     []string{"line"},
+	}
+	c := s.Clone()
+	c.SceneID = "y"
+	c.Stats.Army = 9
+	c.Hand[0] = "z"
+	c.Deck[0] = "z"
+	c.Discard[0] = "z"
+	c.Log[0] = "z"
+	if s.SceneID != "x" || s.Stats.Army != 0 ||
+		s.Hand[0] != "a" || s.Deck[0] != "b" || s.Discard[0] != "c" || s.Log[0] != "line" {
+		t.Fatalf("original mutated via clone: %+v", s)
+	}
+}
+
 func TestChooseRequiresCard(t *testing.T) {
 	_, m := testCards()
 	s := &State{SceneID: "river", Hand: []string{"a", "b"}}
