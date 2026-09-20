@@ -12,6 +12,7 @@ import (
 	"testing/fstest"
 
 	"goGame/internal/content"
+	"goGame/internal/game"
 )
 
 var testContent = fstest.MapFS{
@@ -27,7 +28,11 @@ var testContent = fstest.MapFS{
       {"id":"field","text":"An open field awaits.","choices":[
         {"text":"Return to the coast","effects":[{"kind":"goto","next":"title"}]},
         {"text":"Claim the vault of the treasury","requiresStat":{"treasury":3},"effects":[{"kind":"goto","next":"end_demo"}]},
-        {"text":"Tear up the decree before the heralds","requiresCard":"decree","consumesCard":true,"effects":[{"kind":"goto","next":"title"}]}
+        {"text":"Tear up the decree before the heralds","requiresCard":"decree","consumesCard":true,"effects":[{"kind":"goto","next":"title"}]},
+        {"text":"Gamble on the harvest","effects":[{"kind":"random","outcomes":[
+          {"weight":1,"effects":[{"kind":"stat","delta":{"treasury":1}},{"kind":"goto","next":"title"}]},
+          {"weight":1,"effects":[{"kind":"stat","delta":{"treasury":-1}},{"kind":"goto","next":"title"}]}
+        ]}]}
       ]},
       {"id":"end_demo","text":"The world is yours.","ending":"triumph"}
     ]`)},
@@ -511,8 +516,11 @@ func TestLayoutLoadsEnhancementScripts(t *testing.T) {
 	for _, want := range []string{
 		`src="/static/htmx.min.js"`,
 		`src="/static/game.js"`,
+		`src="/static/fx.js"`,
 		`id="sfx-toggle"`,
+		`id="fx-toggle"`,
 		`href="/static/art.svg#icon-sound"`,
+		`href="/static/art.svg#icon-fx"`,
 	} {
 		if !strings.Contains(b, want) {
 			t.Fatalf("layout missing %s", want)
@@ -616,6 +624,58 @@ func TestBoardLayoutStructure(t *testing.T) {
 	}
 	if i, j, k := strings.Index(b, `id="hand"`), strings.Index(b, `id="deck"`), strings.Index(b, `id="scene"`); !(i < j && j < k) {
 		t.Fatalf("table side must precede the play side in DOM order: hand=%d deck=%d scene=%d", i, j, k)
+	}
+}
+
+// Random resolutions mark the scene so the client can shake and dust.
+func TestFateMarkerOnRandomResolutions(t *testing.T) {
+	c, base := newTestClient(t)
+	startGame(t, c, base)
+
+	resp := postAction(t, c, base, url.Values{"choice": {"0"}}) // title → field
+	if strings.Contains(readBody(t, resp), "data-fate") {
+		t.Fatal("plain choices must not carry the fate marker")
+	}
+	resp = postAction(t, c, base, url.Values{"choice": {"3"}}) // gamble
+	b := readBody(t, resp)
+	if !strings.Contains(b, `data-fate="1"`) {
+		t.Fatalf("random choice must mark the scene, got: %s", b)
+	}
+	if !strings.Contains(b, "Gamble on the harvest") {
+		t.Fatal("log must record the gamble")
+	}
+}
+
+// A broke run with a discard pile must render the shuffle button disabled.
+func TestBrokeShuffleButtonDisabled(t *testing.T) {
+	lib, err := content.Load(testContent)
+	if err != nil {
+		t.Fatalf("content.Load: %v", err)
+	}
+	store := NewStore(lib, "")
+	st := game.NewState(lib, "field")
+	st.Session = "0123456789abcdef0123456789abcdef"
+	st.Stats.Treasury = 0
+	st.Discard = []string{"scout"}
+	if err := store.Put(st); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	ts := httptest.NewServer(New(store).Handler)
+	t.Cleanup(ts.Close)
+
+	req, err := http.NewRequest("GET", ts.URL+"/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.AddCookie(&http.Cookie{Name: "gogame_session", Value: st.Session})
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	b := readBody(t, resp)
+	if !strings.Contains(b, `disabled title="Requires Treasury 1"`) {
+		t.Fatalf("broke shuffle must render disabled with its cost, got: %s", b)
 	}
 }
 

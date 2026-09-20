@@ -28,7 +28,7 @@
 {{end}}
 
 {{define "actionResponse"}}
-<section id="scene">{{template "sceneInner" .}}</section>
+<section id="scene" {{if .Fate}}data-fate="1"{{end}}>{{template "sceneInner" .}}</section>
 <section id="hand" hx-swap-oob="true">{{template "handInner" .}}</section>
 <section id="deck" hx-swap-oob="true">{{template "deckInner" .}}</section>
 <section id="log" hx-swap-oob="true">{{template "logInner" .}}</section>

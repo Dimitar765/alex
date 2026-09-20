@@ -90,8 +90,14 @@ The card table look is pure CSS + SVG + a dash of vanilla JS:
   gold, referenced via `<use>`); the deck inspector shows thumbnails.
 - **Animation**: cards deal in with a staggered slide, the played card
   lifts away while its request is held (`htmx:confirm`), siblings settle,
-  the stat row pulses on change, and the ending badge pops. All of it
-  respects `prefers-reduced-motion`.
+  the stat row pulses on change, and the ending badge pops; a hover glint
+  sweeps the card art. All of it respects `prefers-reduced-motion`.
+- **FX layer** (`fx.js`, hand-rolled canvas particles, zero deps):
+  shuffle throws ghost cards off the deck with dust, card plays trail
+  gold motes toward the scene, stat deltas float as +N/−N, dice rolls
+  (marked `data-fate` by the engine) micro-shake the scene with dust,
+  and endings get rising gold or falling embers plus a vignette. A
+  sparkle toggle in the header switches it all off.
 - **Sound**: a tiny WebAudio synth in `game.js` (no audio files) —
   card flick, choice tick, error thud, and per-outcome ending chimes —
   with a header toggle persisted in `localStorage`.

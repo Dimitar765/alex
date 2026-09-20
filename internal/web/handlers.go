@@ -62,6 +62,7 @@ type view struct {
 	DeckN       int
 	Discard     []deckEntry
 	DiscardN    int
+	Fate        bool // the action that produced this view rolled dice
 }
 
 // titleView is the template data for the title page.
@@ -206,6 +207,7 @@ func (s *Server) buildView(st *game.State, err error) view {
 		Scene:       scene,
 		Turns:       st.Turns,
 		CardsPlayed: st.CardsPlayed,
+		Fate:        st.Rolled,
 	}
 	hist := s.store.History(st.Session)
 	v.Campaigns = len(hist)

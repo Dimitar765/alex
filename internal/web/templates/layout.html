@@ -8,12 +8,16 @@
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/htmx.min.js" defer></script>
   <script src="/static/game.js" defer></script>
+  <script src="/static/fx.js" defer></script>
 </head>
 <body hx-boost="false">
   <header>
     <h1>Alexander</h1>
     <nav class="header-nav">
       <a href="/stats">Chronicle</a>
+      <button id="fx-toggle" type="button" title="Toggle effects" aria-pressed="true">
+        <svg class="icon" viewBox="0 0 64 64" aria-hidden="true"><use href="/static/art.svg#icon-fx"/></svg>
+      </button>
       <button id="sfx-toggle" type="button" title="Toggle sound" aria-pressed="true">
         <svg class="icon icon-on" viewBox="0 0 64 64" aria-hidden="true"><use href="/static/art.svg#icon-sound"/></svg>
         <svg class="icon icon-off" viewBox="0 0 64 64" aria-hidden="true"><use href="/static/art.svg#icon-muted"/></svg>

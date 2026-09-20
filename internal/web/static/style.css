@@ -338,6 +338,10 @@ button.primary { padding: 0.65rem 1.2rem; }
 #sfx-toggle[aria-pressed="false"] .icon-on { display: none; }
 #sfx-toggle[aria-pressed="false"] .icon-off { display: inline; }
 
+#fx-toggle { padding: 0.35rem 0.5rem; }
+#fx-toggle:hover .icon { color: var(--gold); }
+#fx-toggle[aria-pressed="false"] .icon { opacity: 0.4; }
+
 /* --- Deck inspector ------------------------------------------------------ */
 
 .deck-art {
@@ -461,6 +465,92 @@ button.primary { padding: 0.65rem 1.2rem; }
 #scene.htmx-settling .stats { animation: swap-in 0.25s ease-out; }
 .hand.htmx-settling .card { animation: swap-in 0.25s ease-out; }
 
+/* --- FX layer (fx.js) ---------------------------------------------------- */
+
+.fx-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.fx-ghost {
+  position: fixed;
+  width: 36px;
+  height: 52px;
+  border: 1px solid var(--gold);
+  border-radius: 5px;
+  background: #26211c;
+  pointer-events: none;
+  z-index: 41;
+  transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.3, 1), opacity 0.45s ease;
+}
+
+.stat-float {
+  position: fixed;
+  pointer-events: none;
+  z-index: 42;
+  font: 600 0.95rem Georgia, serif;
+  animation: float-up 0.9s ease-out forwards;
+}
+
+.stat-float.up { color: var(--gold); }
+.stat-float.down { color: #b06a5a; }
+
+@keyframes float-up {
+  from { opacity: 0.95; }
+  to { transform: translateY(-22px); opacity: 0; }
+}
+
+.fx-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 39;
+  opacity: 0;
+  animation: vignette-in 1.6s ease-out forwards;
+}
+
+.fx-vignette.dark {
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(10, 6, 4, 0.55) 100%);
+}
+
+.fx-vignette.gold {
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(201, 162, 39, 0.12) 100%);
+}
+
+@keyframes vignette-in { to { opacity: 1; } }
+
+#scene.shake { animation: scene-shake 0.18s linear; }
+
+@keyframes scene-shake {
+  25% { transform: translateX(-1px); }
+  75% { transform: translateX(1px); }
+}
+
+#scene.fate-shake { animation: scene-fate 0.3s ease-out; }
+
+@keyframes scene-fate {
+  20% { transform: translate(-2px, 1px); }
+  45% { transform: translate(2px, -1px); }
+  70% { transform: translateX(-1px); }
+}
+
+/* Card sheen: a soft glint sweeps the art panel on hover. */
+.card-art-wrap { position: relative; overflow: hidden; }
+
+.card-art-wrap::after {
+  content: "";
+  position: absolute;
+  inset: -60% -30%;
+  background: linear-gradient(115deg, transparent 42%, rgba(233, 201, 120, 0.13) 50%, transparent 58%);
+  transform: translateX(-80%);
+  transition: transform 0.7s ease;
+  pointer-events: none;
+}
+
+.card:hover:has(.card-btn:not(:disabled)) .card-art-wrap::after { transform: translateX(80%); }
+
 @media (prefers-reduced-motion: reduce) {
   #scene.htmx-settling .scene-text,
   #scene.htmx-settling .stats,
@@ -470,7 +560,13 @@ button.primary { padding: 0.65rem 1.2rem; }
   .card-played,
   .ending .ending-badge,
   .ending form,
-  #deck.htmx-settling .deck-row {
+  #deck.htmx-settling .deck-row,
+  #scene.shake,
+  #scene.fate-shake,
+  .stat-float,
+  .fx-ghost,
+  .fx-vignette,
+  .card-art-wrap::after {
     animation: none !important;
     transition: none !important;
   }

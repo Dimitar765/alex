@@ -5,7 +5,7 @@
     <section id="deck">{{template "deckInner" .}}</section>
   </aside>
   <div class="play-side">
-    <section id="scene">{{template "sceneInner" .}}</section>
+    <section id="scene" {{if .Fate}}data-fate="1"{{end}}>{{template "sceneInner" .}}</section>
     <section id="log">{{template "logInner" .}}</section>
   </div>
 </div>

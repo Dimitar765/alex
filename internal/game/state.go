@@ -44,6 +44,10 @@ type State struct {
 	Turns       int // successful actions taken (choices and card plays)
 	CardsPlayed int // card plays among those turns
 
+	// Rolled reports whether the most recent action resolved a random
+	// effect; it is a transient presentation hint and never persisted.
+	Rolled bool `json:"-"`
+
 	rng *rand.Rand // optional deterministic source; nil uses the global
 }
 
@@ -100,6 +104,7 @@ func (s *State) Clone() *State {
 // the discard pile. Effects apply in declared order; arriving at a new
 // scene grants its card pool once; the hand then refills.
 func (s *State) Choose(choice content.Choice, lib *content.Library) error {
+	s.Rolled = false
 	if err := s.requirementError(choice, lib.Cards); err != nil {
 		return err
 	}
@@ -126,6 +131,7 @@ func (s *State) Choose(choice content.Choice, lib *content.Library) error {
 // applies its effects in order, and refills the hand. It fails if the card
 // is not in hand or the treasury cannot cover the cost.
 func (s *State) PlayCard(id string, lib *content.Library) error {
+	s.Rolled = false
 	i := slices.Index(s.Hand, id)
 	if i < 0 {
 		return fmt.Errorf("%s is not in your hand", displayName(id, lib.Cards))
@@ -167,6 +173,7 @@ func (s *State) CanPlay(id string, cards map[string]content.Card) bool {
 // discard pile into the deck. It fails when there is nothing to shuffle
 // or the treasury cannot cover the cost.
 func (s *State) Shuffle() error {
+	s.Rolled = false
 	if len(s.Discard) == 0 {
 		return errors.New("nothing to shuffle — the discard pile is empty")
 	}
@@ -185,6 +192,7 @@ func (s *State) Shuffle() error {
 // Peek spends the turn revealing the deck's top card, recorded in the
 // log. It fails when the deck is empty.
 func (s *State) Peek(lib *content.Library) (string, error) {
+	s.Rolled = false
 	if len(s.Deck) == 0 {
 		return "", errors.New("the deck is empty — nothing to scout")
 	}
@@ -284,6 +292,7 @@ func (s *State) apply(e content.Effect, lib *content.Library, parts *[]string) e
 	case content.KindGoto:
 		s.SceneID = e.Next
 	case content.KindRandom:
+		s.Rolled = true
 		total := 0
 		for _, o := range e.Outcomes {
 			total += o.Weight

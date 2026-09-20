@@ -75,6 +75,31 @@ func TestPeekEmptyDeckRefused(t *testing.T) {
 	}
 }
 
+func TestRolledTracksRandomResolution(t *testing.T) {
+	lib := testLib()
+	risky := content.Choice{Text: "Fate", Effects: []content.Effect{
+		{Kind: content.KindRandom, Outcomes: []content.Outcome{{
+			Weight:  1,
+			Effects: []content.Effect{{Kind: content.KindStat, Delta: map[string]int{"army": 1}}},
+		}}},
+	}}
+	plain := content.Choice{Text: "March"}
+
+	s := &State{SceneID: "x", Hand: []string{"a"}}
+	if err := s.Choose(risky, lib); err != nil {
+		t.Fatalf("risky Choose: %v", err)
+	}
+	if !s.Rolled {
+		t.Fatal("Rolled must be set after a random resolution")
+	}
+	if err := s.Choose(plain, lib); err != nil {
+		t.Fatalf("plain Choose: %v", err)
+	}
+	if s.Rolled {
+		t.Fatal("Rolled must reset on the next action")
+	}
+}
+
 func TestShuffleRecyclesDiscardAndSpendsTurn(t *testing.T) {
 	lib := testLib()
 	s := &State{SceneID: "x", Hand: []string{"a"}, Deck: []string{"b"}, Discard: []string{"c", "d"}, Stats: Stats{Treasury: 2}}

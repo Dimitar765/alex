@@ -179,6 +179,14 @@
     </g>
   </symbol>
 
+  <symbol id="icon-fx" viewBox="0 0 64 64">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M32 10 L36 28 L54 32 L36 36 L32 54 L28 36 L10 32 L28 28 Z"/>
+      <circle cx="13" cy="49" r="1.6" fill="currentColor" stroke="none"/>
+      <circle cx="51" cy="47" r="1.6" fill="currentColor" stroke="none"/>
+    </g>
+  </symbol>
+
   <symbol id="icon-sound" viewBox="0 0 64 64">
     <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
       <path d="M10 25 H18 L28 15 V49 L18 39 H10 Z"/>
