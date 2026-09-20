@@ -60,6 +60,7 @@ type view struct {
 	Deck        []deckEntry
 	DeckTotal   int
 	DeckN       int
+	Discard     []deckEntry
 	DiscardN    int
 }
 
@@ -231,6 +232,19 @@ func (s *Server) buildView(st *game.State, err error) view {
 	}
 	v.DiscardN = len(st.Discard)
 	v.DeckN = len(st.Deck)
+
+	// Discard viewer: what the run has burned through, recyclable.
+	dcounts := map[string]int{}
+	for _, id := range st.Discard {
+		dcounts[id]++
+	}
+	for _, id := range slices.Sorted(maps.Keys(dcounts)) {
+		name := id
+		if c, ok := s.store.lib.Cards[id]; ok && c.Name != "" {
+			name = c.Name
+		}
+		v.Discard = append(v.Discard, deckEntry{ID: id, Name: name, Count: dcounts[id]})
+	}
 
 	log := slices.Clone(st.Log)
 	if err != nil {

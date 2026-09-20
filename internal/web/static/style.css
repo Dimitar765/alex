@@ -377,11 +377,17 @@ button.primary { padding: 0.65rem 1.2rem; }
   font-size: 0.9rem;
 }
 
-.deck summary {
+.deck summary, .discard summary {
   cursor: pointer;
   font-variant: small-caps;
   letter-spacing: 0.08em;
   color: var(--gold);
+}
+
+.discard {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
 }
 
 .deck-list {

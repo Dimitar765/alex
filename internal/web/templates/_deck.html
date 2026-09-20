@@ -21,4 +21,10 @@
   </div>
   {{end}}
 </div>
+<details class="discard">
+  <summary>Discard · {{.DiscardN}}</summary>
+  <ul class="deck-list">
+    {{range .Discard}}<li><span class="deck-item"><svg class="deck-art" viewBox="0 0 64 64" aria-hidden="true"><use href="/static/art.svg#art_{{.ID}}"/></svg><span class="deck-name">{{.Name}}</span></span><span class="deck-count">×{{.Count}}</span></li>{{end}}
+  </ul>
+</details>
 {{end}}

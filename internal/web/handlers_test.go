@@ -6,6 +6,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -554,6 +555,13 @@ func TestShuffleActionFlow(t *testing.T) {
 	// Playing cards fills the discard; shuffling recycles it.
 	playCardDig(t, c, base, "decree")
 	discardFills(t, c, base)
+
+	// The discard viewer lists what has been burned through.
+	b = readBody(t, get(t, c, base+"/"))
+	if !regexp.MustCompile(`Discard · [1-9]`).MatchString(b) {
+		t.Fatalf("discard viewer must count a non-empty pile, got: %s", b)
+	}
+
 	resp := postAction(t, c, base, url.Values{"shuffle": {"1"}})
 	b = readBody(t, resp)
 	if strings.Contains(b, "Error:") {
@@ -564,6 +572,9 @@ func TestShuffleActionFlow(t *testing.T) {
 	}
 	if !strings.Contains(b, `disabled title="The discard pile is empty"`) {
 		t.Fatal("shuffle must be disabled again after recycling")
+	}
+	if !strings.Contains(b, "Discard · 0") {
+		t.Fatal("discard viewer must empty after the shuffle")
 	}
 
 	// A second shuffle without plays in between is refused.
