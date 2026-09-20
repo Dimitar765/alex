@@ -9,6 +9,22 @@ go run ./cmd/gogame            # serves http://127.0.0.1:8080
 go run ./cmd/gogame -addr :9000 -saves /tmp/saves
 ```
 
+## Desktop build (Steam target)
+
+The desktop shell runs the same server on a loopback port inside a
+native webview window (`cmd/alexander`, behind the `desktop` build tag):
+
+```
+go build -tags desktop -trimpath -ldflags "-s -w" ./cmd/alexander
+```
+
+Linux needs `libgtk-3-dev libwebkit2gtk-4.0-dev` (the CI workflow pins
+ubuntu-22.04 for exactly that); Windows uses WebView2; macOS uses
+WebKit. Saves live under the OS config dir (`%APPDATA%/Alexander`,
+`~/Library/Application Support/Alexander`, `$XDG_CONFIG_HOME/Alexander`)
+via `internal/paths`. Gamepad navigation (D-pad/stick + A/B) ships in
+`pad.js` for Steam Deck. CI builds all three OSes on every push.
+
 ## How it plays
 
 You march from Pella to Babylon through scenes with 2–3 choices. Three

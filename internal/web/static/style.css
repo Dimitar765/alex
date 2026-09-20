@@ -200,6 +200,12 @@ button {
 }
 
 button:hover:not(:disabled) { background: #3a3229; }
+
+/* Keyboard and gamepad focus ring. */
+button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
 button:disabled { opacity: 0.4; cursor: not-allowed; }
 button.primary { padding: 0.65rem 1.2rem; }
 
