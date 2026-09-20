@@ -3,8 +3,8 @@
 {{range .Hand}}
 <form class="card" hx-post="/game/action" hx-target="#scene" hx-swap="outerHTML">
   <input type="hidden" name="card" value="{{.ID}}">
-  <button type="submit" class="card-btn">
-    <span class="card-name">{{.Name}}</span>
+  <button type="submit" class="card-btn" {{if not .Playable}}disabled title="Requires Treasury {{.Cost}}"{{end}}>
+    <span class="card-name">{{.Name}}{{if .Cost}} <span class="card-cost" title="Treasury cost">{{.Cost}}</span>{{end}}</span>
     <span class="card-text">{{.Text}}</span>
   </button>
 </form>

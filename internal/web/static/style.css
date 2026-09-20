@@ -125,8 +125,20 @@ button.primary { padding: 0.65rem 1.2rem; }
   border-radius: 8px;
 }
 
-.card-btn:hover { background: #2e2822; }
+.card-btn:hover:not(:disabled) { background: #2e2822; }
+.card-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .card-name { color: var(--gold); font-weight: bold; }
+.card-cost {
+  display: inline-block;
+  min-width: 1.2em;
+  padding: 0 0.3em;
+  margin-left: 0.2em;
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.75rem;
+  font-family: ui-monospace, Menlo, monospace;
+}
 .card-text { color: var(--muted); font-size: 0.85rem; }
 
 #log {

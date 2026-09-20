@@ -40,6 +40,7 @@
       {
         "text": "Charge the far bank at the head of the Companions — now, while they wait for parley",
         "requiresCard": "bucephalus",
+        "consumesCard": true,
         "effects": [
           {
             "kind": "random",
@@ -324,6 +325,7 @@
       {
         "text": "Treat with Porus — an ally with war elephants is worth two enemies as subjects",
         "requiresCard": "royal_decree",
+        "consumesCard": true,
         "effects": [
           { "kind": "stat", "delta": { "legacy": 1, "treasury": 1 } },
           { "kind": "gain_card", "cardId": "elephant_corps" },

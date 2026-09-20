@@ -161,6 +161,31 @@ func TestLoadRandomOutcomesMakeScenesReachable(t *testing.T) {
 	}
 }
 
+func TestLoadConsumesCardRequiresCard(t *testing.T) {
+	scenes := `[
+      {"id":"title","text":"","choices":[{"text":"A","consumesCard":true,"effects":[]}]},
+      {"id":"field","text":"","choices":[{"text":"B","effects":[{"kind":"goto","next":"title"}]}]}
+    ]`
+	_, err := Load(fsFrom(t, happyCards, scenes))
+	if err == nil {
+		t.Fatal("Load() must reject consumesCard without requiresCard")
+	}
+	if !strings.Contains(err.Error(), "consumesCard requires a requiresCard") {
+		t.Fatalf("error must name the rule, got: %v", err)
+	}
+}
+
+func TestLoadNegativeCostRejected(t *testing.T) {
+	cards := `[{"id":"x","name":"X","text":"","cost":-1,"effects":[]}]`
+	_, err := Load(fsFrom(t, cards, happyScenes))
+	if err == nil {
+		t.Fatal("Load() must reject negative card costs")
+	}
+	if !strings.Contains(err.Error(), "negative cost") {
+		t.Fatalf("error must name the rule, got: %v", err)
+	}
+}
+
 func TestLoadUnknownFieldsRejected(t *testing.T) {
 	cards := `[{"id":"x","name":"X","text":"","effects":[],"bogus":1}]`
 	if _, err := Load(fsFrom(t, cards, happyScenes)); err == nil {

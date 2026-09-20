@@ -65,20 +65,24 @@ type Effect struct {
 	Outcomes []Outcome      `json:"outcomes,omitempty"`
 }
 
-// Card is a playable card. Effects apply in declared order.
+// Card is a playable card. Cost is the treasury paid to play it (0 is
+// free). Effects apply in declared order.
 type Card struct {
 	ID      string   `json:"id"`
 	Name    string   `json:"name"`
 	Text    string   `json:"text"`
+	Cost    int      `json:"cost,omitempty"`
 	Effects []Effect `json:"effects"`
 }
 
 // Choice is one option on a scene. RequiresCard and RequiresStat are
 // minimum requirements: the card must be in hand and every stat must be at
-// or above its threshold.
+// or above its threshold. ConsumesCard spends the required card to the
+// discard pile when the choice is taken.
 type Choice struct {
 	Text         string         `json:"text"`
 	RequiresCard string         `json:"requiresCard,omitempty"`
+	ConsumesCard bool           `json:"consumesCard,omitempty"`
 	RequiresStat map[string]int `json:"requiresStat,omitempty"`
 	Effects      []Effect       `json:"effects"`
 }
@@ -129,6 +133,9 @@ func Load(fsys fs.FS) (*Library, error) {
 			problemf("duplicate card id %q", c.ID)
 			continue
 		}
+		if c.Cost < 0 {
+			problemf("card %q: negative cost %d", c.ID, c.Cost)
+		}
 		lib.Cards[c.ID] = c
 	}
 
@@ -171,6 +178,8 @@ func Load(fsys fs.FS) (*Library, error) {
 				if _, ok := lib.Cards[ch.RequiresCard]; !ok {
 					problemf("scene %q choice %d: requires unknown card %q", sc.ID, i, ch.RequiresCard)
 				}
+			} else if ch.ConsumesCard {
+				problemf("scene %q choice %d: consumesCard requires a requiresCard", sc.ID, i)
 			}
 			for _, k := range slices.Sorted(maps.Keys(ch.RequiresStat)) {
 				if !statKeys[k] {

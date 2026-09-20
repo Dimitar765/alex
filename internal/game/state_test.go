@@ -196,6 +196,64 @@ func TestRandomRespectsWeights(t *testing.T) {
 	}
 }
 
+func TestPlayCardCostsTreasury(t *testing.T) {
+	_, m := testCards()
+	m["a"] = content.Card{ID: "a", Name: "Alpha", Cost: 2, Effects: []content.Effect{
+		{Kind: content.KindStat, Delta: map[string]int{"army": 2}},
+	}}
+	s := &State{SceneID: "x", Hand: []string{"a", "b"}, Stats: Stats{Treasury: 3}}
+	if err := s.PlayCard("a", m); err != nil {
+		t.Fatalf("PlayCard() error = %v", err)
+	}
+	if s.Stats.Treasury != 1 || s.Stats.Army != 2 {
+		t.Fatalf("cost not paid correctly: %+v", s.Stats)
+	}
+	if !strings.Contains(strings.Join(s.Log, " | "), "Treasury -2") {
+		t.Fatalf("log must name the cost, got %v", s.Log)
+	}
+}
+
+func TestPlayCardUnaffordable(t *testing.T) {
+	_, m := testCards()
+	m["a"] = content.Card{ID: "a", Name: "Alpha", Cost: 2}
+	s := &State{SceneID: "x", Hand: []string{"a", "b"}, Stats: Stats{Treasury: 1}}
+	err := s.PlayCard("a", m)
+	if err == nil || !strings.Contains(err.Error(), "cannot afford Alpha (costs 2 treasury)") {
+		t.Fatalf("PlayCard() error = %v, want affordability error", err)
+	}
+	if len(s.Hand) != 2 || s.Stats.Treasury != 1 {
+		t.Fatalf("refused play must not mutate state: hand=%v stats=%+v", s.Hand, s.Stats)
+	}
+	if s.CanPlay("a", m) {
+		t.Fatal("CanPlay must report unaffordable")
+	}
+	s.Stats.Treasury = 2
+	if !s.CanPlay("a", m) {
+		t.Fatal("CanPlay must report affordable")
+	}
+}
+
+func TestChooseConsumesRequiredCard(t *testing.T) {
+	_, m := testCards()
+	choice := content.Choice{
+		Text:         "Ride him into the river",
+		RequiresCard: "e",
+		ConsumesCard: true,
+		Effects:      []content.Effect{{Kind: content.KindStat, Delta: map[string]int{"legacy": 2}}},
+	}
+	// A stocked deck keeps drawUp from recycling the consumed card.
+	s := &State{SceneID: "granicus", Hand: []string{"e", "a"}, Deck: []string{"b", "c", "d"}}
+	if err := s.Choose(choice, m); err != nil {
+		t.Fatalf("Choose() error = %v", err)
+	}
+	if slices.Contains(s.Hand, "e") || !slices.Contains(s.Discard, "e") {
+		t.Fatalf("consumed card must move hand->discard: hand=%v discard=%v", s.Hand, s.Discard)
+	}
+	if !strings.Contains(strings.Join(s.Log, " | "), "spent Echo") {
+		t.Fatalf("log must name the spent card, got %v", s.Log)
+	}
+}
+
 func TestChooseRequiresCard(t *testing.T) {
 	_, m := testCards()
 	s := &State{SceneID: "river", Hand: []string{"a", "b"}}

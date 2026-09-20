@@ -3,19 +3,22 @@
     "id": "companion_charge",
     "name": "Companion Charge",
     "text": "The Companions hit like a thunderbolt; the line bends and breaks.",
-    "effects": [{ "kind": "stat", "delta": { "legacy": 1, "army": 1 } }]
+    "cost": 1,
+    "effects": [{ "kind": "stat", "delta": { "legacy": 2, "army": 1 } }]
   },
   {
     "id": "phalanx",
     "name": "Phalanx",
     "text": "Sarissas level; the wall of bronze advances and does not stop.",
+    "cost": 1,
     "effects": [{ "kind": "stat", "delta": { "army": 2 } }]
   },
   {
     "id": "siege_ladder",
     "name": "Siege Ladder",
     "text": "Timbers, rope, and nerve — a wall is only a door not yet opened.",
-    "effects": [{ "kind": "stat", "delta": { "army": 1, "treasury": -1 } }]
+    "cost": 1,
+    "effects": [{ "kind": "stat", "delta": { "army": 2 } }]
   },
   {
     "id": "bucephalus",
@@ -33,19 +36,21 @@
     "id": "wedge_formation",
     "name": "Wedge Formation",
     "text": "A spearhead of horse and foot, driven where the enemy line is thinnest.",
+    "cost": 1,
     "effects": [{ "kind": "stat", "delta": { "army": 1, "legacy": 1 } }]
   },
   {
     "id": "hypaspists",
     "name": "Shield-Bearers",
     "text": "The hypaspists: picked men who hold the seam between horse and pike.",
+    "cost": 1,
     "effects": [{ "kind": "stat", "delta": { "army": 1, "legacy": 1 } }]
   },
   {
     "id": "agrianians",
     "name": "Agrianian Javelins",
     "text": "Hillmen who run at walls and rivers as if they were neither.",
-    "effects": [{ "kind": "stat", "delta": { "army": 2 } }]
+    "effects": [{ "kind": "stat", "delta": { "army": 1 } }]
   },
   {
     "id": "war_chest",
@@ -69,7 +74,8 @@
     "id": "nearchus_fleet",
     "name": "Nearchus's Fleet",
     "text": "Hulls crawling the coast like water-beetles, carrying your war and your name.",
-    "effects": [{ "kind": "stat", "delta": { "legacy": 1, "treasury": -1 } }]
+    "cost": 2,
+    "effects": [{ "kind": "stat", "delta": { "legacy": 2 } }]
   },
   {
     "id": "roxane",
@@ -81,6 +87,7 @@
     "id": "elephant_corps",
     "name": "Elephant Corps",
     "text": "Porus's grey giants, swaying decks of archers between their tusks.",
-    "effects": [{ "kind": "stat", "delta": { "army": 2, "treasury": -1 } }]
+    "cost": 2,
+    "effects": [{ "kind": "stat", "delta": { "army": 3 } }]
   }
 ]

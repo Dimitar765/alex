@@ -26,9 +26,11 @@ type choiceView struct {
 }
 
 type cardView struct {
-	ID   string
-	Name string
-	Text string
+	ID       string
+	Name     string
+	Text     string
+	Cost     int
+	Playable bool
 }
 
 // view is the template data for the game page and the action partial.
@@ -100,7 +102,11 @@ func (s *Server) buildView(st *game.State, err error) view {
 	for i, c := range scene.Choices {
 		var reqs []string
 		if c.RequiresCard != "" {
-			reqs = append(reqs, s.store.lib.Cards[c.RequiresCard].Name)
+			label := s.store.lib.Cards[c.RequiresCard].Name
+			if c.ConsumesCard {
+				label += " (spent)"
+			}
+			reqs = append(reqs, label)
 		}
 		for _, k := range slices.Sorted(maps.Keys(c.RequiresStat)) {
 			reqs = append(reqs, fmt.Sprintf("%s %d", game.StatLabel(k), c.RequiresStat[k]))
@@ -113,7 +119,14 @@ func (s *Server) buildView(st *game.State, err error) view {
 		})
 	}
 	for _, id := range st.Hand {
-		v.Hand = append(v.Hand, cardView{ID: id, Name: s.store.lib.Cards[id].Name, Text: s.store.lib.Cards[id].Text})
+		c := s.store.lib.Cards[id]
+		v.Hand = append(v.Hand, cardView{
+			ID:       id,
+			Name:     c.Name,
+			Text:     c.Text,
+			Cost:     c.Cost,
+			Playable: st.CanPlay(id, s.store.lib.Cards),
+		})
 	}
 	if err != nil {
 		v.Log = append(v.Log, "Error: "+err.Error())

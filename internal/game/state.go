@@ -61,13 +61,18 @@ func (s *State) Clone() *State {
 }
 
 // Choose applies a scene choice. It fails if the choice's card or stat
-// requirements are not met. Effects apply in declared order; the hand then
-// refills.
+// requirements are not met. A consuming choice spends its required card to
+// the discard pile. Effects apply in declared order; the hand then refills.
 func (s *State) Choose(choice content.Choice, cards map[string]content.Card) error {
 	if err := s.requirementError(choice, cards); err != nil {
 		return err
 	}
 	parts := []string{choice.Text}
+	if choice.ConsumesCard {
+		takeCard(choice.RequiresCard, &s.Hand)
+		s.Discard = append(s.Discard, choice.RequiresCard)
+		parts = append(parts, "spent "+displayName(choice.RequiresCard, cards))
+	}
 	if err := s.applyEffects(choice.Effects, cards, &parts); err != nil {
 		return err
 	}
@@ -76,23 +81,39 @@ func (s *State) Choose(choice content.Choice, cards map[string]content.Card) err
 	return nil
 }
 
-// PlayCard removes a card from the hand to the discard pile, applies its
-// effects in order, and refills the hand. It fails if the card is not in hand.
+// PlayCard removes a card from the hand to the discard pile, pays its cost,
+// applies its effects in order, and refills the hand. It fails if the card
+// is not in hand or the treasury cannot cover the cost.
 func (s *State) PlayCard(id string, cards map[string]content.Card) error {
 	i := slices.Index(s.Hand, id)
 	if i < 0 {
 		return fmt.Errorf("%s is not in your hand", displayName(id, cards))
 	}
 	card := cards[id]
+	if s.Stats.Treasury < card.Cost {
+		return fmt.Errorf("you cannot afford %s (costs %d treasury)", displayName(id, cards), card.Cost)
+	}
 	s.Hand = slices.Delete(s.Hand, i, i+1)
 	s.Discard = append(s.Discard, id)
 	parts := []string{"Played " + displayName(id, cards)}
+	if card.Cost > 0 {
+		s.Stats.Treasury -= card.Cost
+		parts = append(parts, fmt.Sprintf("Treasury -%d", card.Cost))
+	}
 	if err := s.applyEffects(card.Effects, cards, &parts); err != nil {
 		return err
 	}
 	s.drawUp()
 	s.appendLog(joinParts(parts))
 	return nil
+}
+
+// CanPlay reports whether the card is in hand and affordable right now.
+func (s *State) CanPlay(id string, cards map[string]content.Card) bool {
+	if !slices.Contains(s.Hand, id) {
+		return false
+	}
+	return s.Stats.Treasury >= cards[id].Cost
 }
 
 // CanChoose reports whether the current hand and stats meet every
