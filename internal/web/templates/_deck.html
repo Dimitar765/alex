@@ -14,7 +14,7 @@
     </form>
     <form class="shuffle-form" method="post" action="/game/action" hx-post="/game/action" hx-target="#scene" hx-swap="outerHTML swap:120ms settle:400ms">
       <input type="hidden" name="shuffle" value="1">
-      <button type="submit" class="shuffle-btn" {{if eq .DiscardN 0}}disabled title="The discard pile is empty"{{end}} title="Recycle the discard pile into the deck — spends your turn">
+      <button type="submit" class="shuffle-btn" {{if eq .DiscardN 0}}disabled title="The discard pile is empty"{{else if lt .Stats.Treasury 1}}disabled title="Requires Treasury 1"{{end}} title="Recycle the discard pile into the deck — spends your turn and 1 treasury">
         Shuffle · {{.DiscardN}}
       </button>
     </form>

@@ -77,13 +77,16 @@ func TestPeekEmptyDeckRefused(t *testing.T) {
 
 func TestShuffleRecyclesDiscardAndSpendsTurn(t *testing.T) {
 	lib := testLib()
-	s := &State{SceneID: "x", Hand: []string{"a"}, Deck: []string{"b"}, Discard: []string{"c", "d"}}
+	s := &State{SceneID: "x", Hand: []string{"a"}, Deck: []string{"b"}, Discard: []string{"c", "d"}, Stats: Stats{Treasury: 2}}
 	turns := s.Turns
 	if err := s.Shuffle(); err != nil {
 		t.Fatalf("Shuffle() error = %v", err)
 	}
 	if s.Turns != turns+1 || s.CardsPlayed != 0 {
 		t.Fatalf("shuffle must spend the turn without counting a card play: %+v", s)
+	}
+	if s.Stats.Treasury != 1 {
+		t.Fatalf("shuffle must pay its treasury cost: %+v", s.Stats)
 	}
 	if len(s.Discard) != 0 || len(s.Deck) != 3 { // b + recycled c, d
 		t.Fatalf("discard must recycle into the deck: deck=%v discard=%v", s.Deck, s.Discard)
@@ -93,10 +96,21 @@ func TestShuffleRecyclesDiscardAndSpendsTurn(t *testing.T) {
 	if !slices.Equal(all, []string{"a", "b", "c", "d"}) {
 		t.Fatalf("cards must be conserved: %v", all)
 	}
-	if !strings.Contains(strings.Join(s.Log, " | "), "Shuffled the discard") {
-		t.Fatalf("log must record the shuffle, got %v", s.Log)
+	if !strings.Contains(strings.Join(s.Log, " | "), "Shuffled the discard pile into the deck. Treasury -1.") {
+		t.Fatalf("log must record the shuffle and cost, got %v", s.Log)
 	}
 	_ = lib
+}
+
+func TestShuffleBrokeRefused(t *testing.T) {
+	s := &State{SceneID: "x", Hand: []string{"a"}, Deck: []string{"b"}, Discard: []string{"c"}}
+	err := s.Shuffle()
+	if err == nil || !strings.Contains(err.Error(), "cannot afford to shuffle (costs 1 treasury)") {
+		t.Fatalf("Shuffle() error = %v, want affordability refusal", err)
+	}
+	if s.Turns != 0 || len(s.Discard) != 1 || s.Stats.Treasury != 0 {
+		t.Fatalf("refused shuffle must not mutate state: %+v", s)
+	}
 }
 
 func TestShuffleEmptyDiscardRefused(t *testing.T) {

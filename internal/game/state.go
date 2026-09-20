@@ -16,6 +16,9 @@ import (
 // HandSize is the number of cards the hand refills to.
 const HandSize = 4
 
+// ShuffleCost is the treasury paid to shuffle the discard pile home.
+const ShuffleCost = 1
+
 // MaxLogLen bounds the human-readable event log.
 const MaxLogLen = 50
 
@@ -160,17 +163,22 @@ func (s *State) CanPlay(id string, cards map[string]content.Card) bool {
 	return s.Stats.Treasury >= cards[id].Cost
 }
 
-// Shuffle spends the turn recycling the discard pile into the deck. It
-// fails when there is nothing to shuffle.
+// Shuffle pays ShuffleCost treasury and spends the turn recycling the
+// discard pile into the deck. It fails when there is nothing to shuffle
+// or the treasury cannot cover the cost.
 func (s *State) Shuffle() error {
 	if len(s.Discard) == 0 {
 		return errors.New("nothing to shuffle — the discard pile is empty")
 	}
+	if s.Stats.Treasury < ShuffleCost {
+		return fmt.Errorf("you cannot afford to shuffle (costs %d treasury)", ShuffleCost)
+	}
+	s.Stats.Treasury -= ShuffleCost
 	s.Deck = append(s.Deck, s.Discard...)
 	s.Discard = nil
 	s.shuffle(len(s.Deck), func(i, j int) { s.Deck[i], s.Deck[j] = s.Deck[j], s.Deck[i] })
 	s.Turns++
-	s.appendLog("Shuffled the discard pile into the deck")
+	s.appendLog(joinParts([]string{"Shuffled the discard pile into the deck", fmt.Sprintf("Treasury -%d", ShuffleCost)}))
 	return nil
 }
 
