@@ -49,6 +49,8 @@ type deckEntry struct {
 // view is the template data for the game page and the action partial.
 type view struct {
 	Stats       game.Stats
+	Threat      int
+	MaxThreat   int
 	Scene       content.Scene
 	Choices     []choiceView
 	Hand        []cardView
@@ -204,6 +206,8 @@ func (s *Server) buildView(st *game.State, err error) view {
 	scene := s.store.lib.Scenes[st.SceneID]
 	v := view{
 		Stats:       st.Stats,
+		Threat:      st.Threat,
+		MaxThreat:   game.ThreatMax,
 		Scene:       scene,
 		Turns:       st.Turns,
 		CardsPlayed: st.CardsPlayed,

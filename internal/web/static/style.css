@@ -125,6 +125,16 @@ main {
   color: var(--gold);
 }
 
+.stats .threat-warn { color: #d8842c; }
+.stats .threat-critical { color: #c25b4e; }
+
+/* The battle scene turns the panel border blood-red. */
+#scene[data-battle] { border-color: #7a3b31; }
+#scene[data-battle] .scene-text::before {
+  content: "⚔ ";
+  color: #c25b4e;
+}
+
 .choices { display: grid; gap: 0.5rem; }
 
 /* Every choice spans the scene panel — wrapped or single-line alike. */
