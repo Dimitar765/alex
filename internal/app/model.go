@@ -148,6 +148,9 @@ func diffEffects(lib *content.Library, prev, next *game.State) []Effect {
 			fx = append(fx, Effect{Kind: EffectStat, Stat: key, Delta: d})
 		}
 	}
+	if d := next.Threat - prev.Threat; d != 0 {
+		fx = append(fx, Effect{Kind: EffectThreat, Stat: "threat", Delta: d})
+	}
 	prevHand, nextHand := counts(prev.Hand), counts(next.Hand)
 	for _, id := range sortedKeys(nextHand, prevHand) {
 		if d := nextHand[id] - prevHand[id]; d < 0 {

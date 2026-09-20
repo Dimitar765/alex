@@ -317,3 +317,24 @@ func TestSpeculativeCloneKeepsModelImmutable(t *testing.T) {
 		t.Fatal("HandSize changed unexpectedly")
 	}
 }
+
+func TestThreatEffectsAndView(t *testing.T) {
+	m := newTestModel()
+	m.NewGame()
+	m.PlayCard("free") // threat +1 from the turn advance
+	v := m.View()
+	if v.Threat != 1 || v.MaxThreat != game.ThreatMax {
+		t.Fatalf("threat = %d/%d, want 1/%d", v.Threat, v.MaxThreat, game.ThreatMax)
+	}
+	if r := m.PlayCard("free"); r.Err == nil {
+		found := false
+		for _, e := range r.Effects {
+			if e.Kind == EffectThreat {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatal("threat delta not reported in effects")
+		}
+	}
+}

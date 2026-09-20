@@ -57,10 +57,12 @@ type ChoiceView struct {
 // View is everything needed to draw one frame: a pure projection of the
 // model, safe to hold while animations play.
 type View struct {
-	SceneID string
-	Scene   content.Scene
-	Stats   game.Stats
-	Fate    bool // the last action resolved a random effect
+	SceneID   string
+	Scene     content.Scene
+	Stats     game.Stats
+	Threat    int
+	MaxThreat int
+	Fate      bool // the last action resolved a random effect
 
 	Choices []ChoiceView
 	Hand    []CardView
@@ -100,6 +102,8 @@ func (m *Model) project(st *game.State, err error) *View {
 	v.SceneID = st.SceneID
 	v.Scene = scene
 	v.Stats = st.Stats
+	v.Threat = st.Threat
+	v.MaxThreat = game.ThreatMax
 	v.Fate = st.Rolled
 	v.Turns = st.Turns
 	v.CardsPlayed = st.CardsPlayed

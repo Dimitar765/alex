@@ -22,6 +22,9 @@ const (
 	EffectEnding
 	// EffectFate: the action resolved a random effect.
 	EffectFate
+	// EffectThreat: the threat track moved. Stat is "threat", Delta the
+	// change.
+	EffectThreat
 )
 
 // Effect is one consequence of a committed action. Which fields are
