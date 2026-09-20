@@ -4,6 +4,8 @@
 package desktop
 
 import (
+	"time"
+
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
@@ -31,6 +33,10 @@ type Game struct {
 	mouseClicked     bool
 	keysPressed      map[ebiten.Key]bool
 	stickX, stickY   float64 // previous tick's left-stick axes
+
+	// dt is the seconds elapsed this tick, capped for stability.
+	dt   float64
+	last time.Time
 }
 
 // New builds the root game: theme, model, and the landing screen.
@@ -58,11 +64,35 @@ func New() (*Game, error) {
 
 // Update advances input, then the top screen by one tick.
 func (g *Game) Update() error {
+	now := time.Now()
+	if !g.last.IsZero() {
+		g.dt = min(0.05, now.Sub(g.last).Seconds())
+	}
+	g.last = now
+
 	g.refreshInput()
 	if len(g.stack) == 0 {
 		return ebiten.Termination
 	}
 	return g.stack[len(g.stack)-1].update(g)
+}
+
+// consumeEffects routes an action's FX events to the active screen.
+func (g *Game) consumeEffects(r app.Result) {
+	if s, ok := g.screen().(fxSink); ok && len(r.Effects) > 0 {
+		s.consumeFX(r.Effects)
+	}
+}
+
+// fxSink is implemented by screens that animate action consequences.
+type fxSink interface {
+	consumeFX(effects []app.Effect)
+}
+
+// Layout returns the fixed design-space size; Ebitengine scales the
+// window onto it.
+func (g *Game) Layout(_, _ int) (int, int) {
+	return ScreenW, ScreenH
 }
 
 // Draw renders the top screen.
@@ -72,12 +102,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		return
 	}
 	g.stack[len(g.stack)-1].draw(g, screen)
-}
-
-// Layout returns the fixed design-space size; Ebitengine scales the
-// window onto it.
-func (g *Game) Layout(_, _ int) (int, int) {
-	return ScreenW, ScreenH
 }
 
 // refreshInput snapshots cursor, click edge, and pressed keys for this tick.
@@ -112,11 +136,6 @@ func (g *Game) replaceScreen(s screen) {
 	}
 	g.stack = append(g.stack, s)
 }
-
-// consumeEffects feeds an action's FX events to the animation layer.
-// Phase 5 turns this into tweens/particles/audio; for now the events are
-// acknowledged so the view-model contract is exercised end to end.
-func (g *Game) consumeEffects(r app.Result) {}
 
 // screen returns the top of the screen stack, or nil when empty.
 func (g *Game) screen() screen {

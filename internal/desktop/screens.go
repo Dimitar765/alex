@@ -2,11 +2,14 @@ package desktop
 
 import (
 	"fmt"
+	"math/rand"
+	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 
 	"goGame/internal/app"
+	"goGame/internal/game"
 )
 
 // screen is one full-window view. Screens push and pop via the Game.
@@ -152,6 +155,18 @@ type tableScreen struct {
 	cards     *cardCache
 	focus     int
 	endingBtn Rectangle // set while drawing the ending summary
+
+	anims    map[string]*cardAnim // hand card flight state, keyed by ID
+	lastHand []string             // previous tick's hand IDs
+	lastPos  []cardSlot           // their fan slots (for ghost spawns)
+
+	fxGhosts []ghostCard
+	fxFloats []floatText
+	fxParts  []particle
+	shakeT   float64
+
+	statsX, statsY float64 // where the stat row landed last draw
+	off            *ebiten.Image
 }
 
 func (s *tableScreen) ensureCache() {
@@ -161,6 +176,7 @@ func (s *tableScreen) ensureCache() {
 }
 
 func (s *tableScreen) update(g *Game) error {
+	s.stepFX(g.dt)
 	if g.back() {
 		g.popScreen()
 		return nil
@@ -170,9 +186,40 @@ func (s *tableScreen) update(g *Game) error {
 		// Run over: the summary panel's button (or confirm) restarts.
 		if (g.mouseClicked && s.endingBtn.Contains(g.cursorX, g.cursorY)) || g.confirm() {
 			g.model.NewGame()
+			s.reset()
 		}
 		return nil
 	}
+
+	// Track hand transitions: leaving cards become play ghosts, new
+	// cards fly in from the deck side.
+	pos := fanPositions(len(v.Hand), newLayout().table.W)
+	cur := map[string]bool{}
+	for _, c := range v.Hand {
+		cur[c.ID] = true
+	}
+	if s.anims == nil {
+		s.anims = map[string]*cardAnim{}
+	}
+	for i, id := range s.lastHand {
+		if !cur[id] && i < len(s.lastPos) {
+			s.spawnPlayGhost(id, s.lastPos[i])
+		}
+	}
+	for i, c := range v.Hand {
+		a, ok := s.anims[c.ID]
+		if !ok {
+			a = &cardAnim{}
+			a.settle(pos[i], 0, true)
+			s.anims[c.ID] = a
+		}
+		a.approach(pos[i], g.dt)
+	}
+	s.lastHand = make([]string, len(v.Hand))
+	for i, c := range v.Hand {
+		s.lastHand[i] = c.ID
+	}
+	s.lastPos = pos
 
 	n := len(v.Hand)
 	targets := n + 2 // hand cards + Scout + Shuffle
@@ -202,66 +249,238 @@ func (s *tableScreen) update(g *Game) error {
 	return nil
 }
 
+// reset clears transient FX state when a new campaign begins.
+func (s *tableScreen) reset() {
+	s.anims = map[string]*cardAnim{}
+	s.lastHand = nil
+	s.lastPos = nil
+	s.fxGhosts = nil
+	s.fxFloats = nil
+	s.fxParts = nil
+	s.focus = -1
+}
+
 func (s *tableScreen) draw(g *Game, dst *ebiten.Image) {
 	s.ensureCache()
-	dst.Fill(themeBackground)
 	v := g.model.View()
 	l := newLayout()
-	s.drawTable(g, dst, v)
 
-	if v.Scene.Ending != "" {
-		return
+	// While a shake is active, render the table into an offscreen image
+	// and blit it with a decaying offset.
+	target := dst
+	if s.shakeT > 0 {
+		if s.off == nil {
+			s.off = ebiten.NewImage(ScreenW, ScreenH)
+		}
+		s.off.Fill(themeBackground)
+		target = s.off
+	}
+	target.Fill(themeBackground)
+	s.drawTable(g, target, v)
+
+	if v.Scene.Ending == "" {
+		n := len(v.Hand)
+		for i, c := range v.Hand {
+			if i >= len(s.lastPos) {
+				break
+			}
+			a, ok := s.anims[c.ID]
+			if !ok {
+				continue
+			}
+			x, y := a.X, a.Y
+			// Hover lift: cards rise toward the cursor like the web fan.
+			hover := Rectangle{X: x - cardW/2, Y: y - cardH/2, W: cardW, H: cardH}.
+				Contains(g.cursorX, g.cursorY)
+			scale := a.Scale
+			lift := 0.0
+			if hover && c.Playable {
+				lift = 16
+			}
+			if s.focus == i {
+				lift = 12
+				scale *= 1.05
+			}
+			s.cards.drawCard(target, s.cards.face(g, c), x, y-lift, a.Angle, scale, !c.Playable)
+			if hover && c.Playable && g.mouseClicked {
+				if r := g.model.PlayCard(c.ID); r.Err == nil {
+					g.consumeEffects(r)
+				}
+			}
+		}
+
+		// Deck row under the fan.
+		rowY := l.table.Y + l.table.H - 96
+		drawText(target, fmt.Sprintf("Deck · %d", v.DeckCount), g.theme.Face(faceSmall),
+			l.table.X+4, rowY, themeGold)
+		drawText(target, fmt.Sprintf("Discard · %d", v.DiscardCount), g.theme.Face(faceSmall),
+			l.table.X+4, rowY+30, themeMuted)
+
+		shuffleLabel := fmt.Sprintf("Shuffle · %d", v.DiscardCount)
+		shuffle := button{Rect: Rectangle{X: l.table.X + l.table.W - 110, Y: rowY - 4, W: 110, H: 36}, Label: shuffleLabel}
+		scout := button{Rect: Rectangle{X: l.table.X + l.table.W - 228, Y: rowY - 4, W: 110, H: 36}, Label: "Scout"}
+		if s.focus == n {
+			drawText(dst, "▸", g.theme.Face(faceBody), scout.Rect.X-20, scout.Rect.Y+6, themeGold)
+		}
+		if s.focus == n+1 {
+			drawText(dst, "▸", g.theme.Face(faceBody), shuffle.Rect.X-20, shuffle.Rect.Y+6, themeGold)
+		}
+		if scout.clicked(g) {
+			g.model.Scout()
+		}
+		if shuffle.clicked(g) {
+			g.model.Shuffle()
+		}
+		scout.draw(g, target)
+		shuffle.draw(g, target)
 	}
 
-	n := len(v.Hand)
-	positions := fanPositions(n, l.table.W)
-	for i, c := range v.Hand {
-		p := positions[i]
-		focused := s.focus == i
-		// Hover lift: cards rise toward the cursor like the web fan.
-		hover := Rectangle{X: p.X - cardW/2, Y: p.Y - cardH/2, W: cardW, H: cardH}.
-			Contains(g.cursorX, g.cursorY)
-		scale, lift := 1.0, 0.0
-		if hover && c.Playable {
-			lift = 16
-		}
-		if focused {
-			lift = 12
-			scale = 1.05
-		}
-		s.cards.drawCard(dst, s.cards.face(g, c), p.X, p.Y-lift, p.Angle, scale, !c.Playable)
-		if hover && c.Playable && g.mouseClicked {
-			if r := g.model.PlayCard(c.ID); r.Err == nil {
-				g.consumeEffects(r)
+	// FX always render unshaken, on the real frame.
+	for i := range s.fxGhosts {
+		s.fxGhosts[i].draw(dst)
+	}
+	for i := range s.fxParts {
+		s.fxParts[i].draw(dst)
+	}
+	for i := range s.fxFloats {
+		s.fxFloats[i].draw(dst, g)
+	}
+
+	if s.shakeT > 0 {
+		dx := sin64(s.shakeT*44) * 5 * s.shakeT
+		dst.Fill(themeBackground)
+		opts := &ebiten.DrawImageOptions{}
+		opts.GeoM.Translate(dx, 0)
+		dst.DrawImage(s.off, opts)
+	}
+}
+
+// sin64 is math.Sin with a dependency-free call site.
+func sin64(x float64) float64 {
+	x = mod2pi(x)
+	sq := x * x
+	// Taylor around 0 is fine for the small range a shake uses.
+	return x - x*sq/6 + x*sq*sq/120 - x*sq*sq*sq/5040
+}
+
+func mod2pi(x float64) float64 {
+	const twoPi = 6.283185307179586
+	for x > twoPi {
+		x -= twoPi
+	}
+	for x < 0 {
+		x += twoPi
+	}
+	return x
+}
+
+// consumeFX turns action effects into ghosts, floats, sparks, and shakes.
+func (s *tableScreen) consumeFX(effects []app.Effect) {
+	l := newLayout()
+	for _, e := range effects {
+		switch e.Kind {
+		case app.EffectStat:
+			verb := "+"
+			clr := themeGold
+			if e.Delta < 0 {
+				verb, clr = "", rgb(0xb0, 0x6a, 0x5a)
+			}
+			s.fxFloats = append(s.fxFloats, floatText{
+				text: fmt.Sprintf("%s%+d %s", verb, e.Delta, game.StatLabel(e.Stat)),
+				x:    s.statsX, y: s.statsY,
+				life: 0.9, clr: clr,
+			})
+		case app.EffectCardLeft:
+			if i := slices.Index(s.lastHand, e.CardID); i >= 0 && i < len(s.lastPos) {
+				p := s.lastPos[i]
+				if img := s.cards.faces[e.CardID]; img != nil {
+					s.fxGhosts = append(s.fxGhosts, ghostCard{
+						img: img, x: p.X, y: p.Y, angle: p.Angle, scale: 1,
+						vx: 420, vy: -260, spin: -2.2, alpha: 1,
+					})
+					s.spawnDust(p.X, p.Y)
+				}
+			}
+		case app.EffectCardGained:
+			ln := newLayout()
+			s.spawnDust(ln.table.X + ln.table.W/2 + 80)
+		case app.EffectFate:
+			if !reducedMotion {
+				s.shakeT = 0.3
+			}
+		case app.EffectEnding:
+			for i := 0; i < 24; i++ {
+				s.fxParts = append(s.fxParts, particle{
+					x:  l.play.X + l.play.W/2 + randSpread(180),
+					y:  l.play.Y + 120,
+					vx: randSpread(40), vy: -60 - randAbs(80),
+					life: 1.2 + randAbs(0.5), maxLife: 1.6,
+					size: 2.5, clr: themeGold,
+				})
 			}
 		}
 	}
-
-	// Deck row under the fan.
-	rowY := l.table.Y + l.table.H - 96
-	drawText(dst, fmt.Sprintf("Deck · %d", v.DeckCount), g.theme.Face(faceSmall),
-		l.table.X+4, rowY, themeGold)
-	drawText(dst, fmt.Sprintf("Discard · %d", v.DiscardCount), g.theme.Face(faceSmall),
-		l.table.X+4, rowY+30, themeMuted)
-
-	shuffleLabel := fmt.Sprintf("Shuffle · %d", v.DiscardCount)
-	shuffle := button{Rect: Rectangle{X: l.table.X + l.table.W - 110, Y: rowY - 4, W: 110, H: 36}, Label: shuffleLabel}
-	scout := button{Rect: Rectangle{X: l.table.X + l.table.W - 228, Y: rowY - 4, W: 110, H: 36}, Label: "Scout"}
-	if s.focus == n {
-		drawText(dst, "▸", g.theme.Face(faceBody), scout.Rect.X-20, scout.Rect.Y+6, themeGold)
-	}
-	if s.focus == n+1 {
-		drawText(dst, "▸", g.theme.Face(faceBody), shuffle.Rect.X-20, shuffle.Rect.Y+6, themeGold)
-	}
-	if scout.clicked(g) {
-		g.model.Scout()
-	}
-	if shuffle.clicked(g) {
-		g.model.Shuffle()
-	}
-	scout.draw(g, dst)
-	shuffle.draw(g, dst)
 }
+
+// stepFX advances every transient effect by dt.
+func (s *tableScreen) stepFX(dt float64) {
+	for i := len(s.fxGhosts) - 1; i >= 0; i-- {
+		if !s.fxGhosts[i].update(dt) {
+			s.fxGhosts = append(s.fxGhosts[:i], s.fxGhosts[i+1:]...)
+		}
+	}
+	for i := len(s.fxFloats) - 1; i >= 0; i-- {
+		if !s.fxFloats[i].update(dt) {
+			s.fxFloats = append(s.fxFloats[:i], s.fxFloats[i+1:]...)
+		}
+	}
+	for i := len(s.fxParts) - 1; i >= 0; i-- {
+		if !s.fxParts[i].update(dt) {
+			s.fxParts = append(s.fxParts[:i], s.fxParts[i+1:]...)
+		}
+	}
+	if s.shakeT > 0 {
+		s.shakeT -= dt
+		if s.shakeT < 0 {
+			s.shakeT = 0
+		}
+	}
+}
+
+// spawnPlayGhost launches the leaving card from its old slot.
+func (s *tableScreen) spawnPlayGhost(id string, p cardSlot) {
+	if img := s.cards.faces[id]; img != nil {
+		s.fxGhosts = append(s.fxGhosts, ghostCard{
+			img: img, x: p.X, y: p.Y, angle: p.Angle, scale: 1,
+			vx: 420, vy: -260, spin: -2.2, alpha: 1,
+		})
+	}
+}
+
+// spawnDust emits a little puff of gold specks at (x, y).
+func (s *tableScreen) spawnDust(x float64, y ...float64) {
+	py := 300.0
+	if len(y) > 0 {
+		py = y[0]
+	}
+	if reducedMotion {
+		return
+	}
+	for i := 0; i < 8; i++ {
+		s.fxParts = append(s.fxParts, particle{
+			x: x + randSpread(30), y: py + randSpread(20),
+			vx: randSpread(60), vy: -30 - randAbs(50),
+			life: 0.5 + randAbs(0.3), maxLife: 0.8,
+			size: 2, clr: themeGold,
+		})
+	}
+}
+
+// randSpread returns a random value in [-spread, spread].
+func randSpread(spread float64) float64 { return (rand.Float64()*2 - 1) * spread }
+
+// randAbs returns a random non-negative value below max.
+func randAbs(max float64) float64 { return rand.Float64() * max }
 
 // abs is math.Abs for the fan arc.
 func abs(f float64) float64 {
@@ -314,6 +533,7 @@ func (s *tableScreen) drawTable(g *Game, dst *ebiten.Image, v *app.View) {
 	stats := fmt.Sprintf("Legacy %d   Army %d   Treasury %d",
 		v.Stats.Legacy, v.Stats.Army, v.Stats.Treasury)
 	drawText(dst, stats, g.theme.Face(faceBody), l.scenePanel.X+20, statsY, themeGold)
+	s.statsX, s.statsY = l.scenePanel.X+20, statsY
 
 	if v.Scene.Ending != "" {
 		// Terminal scene: badge, summary, and the way back in.
