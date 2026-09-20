@@ -40,7 +40,9 @@ func (cc *cardCache) face(g *Game, c app.CardView) *ebiten.Image {
 	return img
 }
 
-// paintFace draws one card face onto dst.
+// paintFace draws one card face onto dst. Fixed bands keep text from
+// colliding: emblem 14–106, name centered at 118, flavor capped to the
+// band 150–200.
 func (g *Game) paintFace(dst *ebiten.Image, c app.CardView) {
 	const corner = 10
 	// Base plate: rect + four corner circles reads as a rounded card.
@@ -54,32 +56,27 @@ func (g *Game) paintFace(dst *ebiten.Image, c app.CardView) {
 	}
 	vector.StrokeRect(dst, 2, 2, cardW-4, cardH-4, 1.5, themeCardEdge, true)
 
-	// Emblem, gold line art centered in the upper half.
+	// Emblem, gold line art centered in the upper band.
 	if emblem, err := art.Open("art_" + c.ID); err == nil {
 		src := ebiten.NewImageFromImage(emblem)
-		const box = 96
+		const box = 88
 		s := float64(box) / float64(src.Bounds().Dx())
 		opts := &ebiten.DrawImageOptions{}
 		opts.GeoM.Scale(s, s)
-		opts.GeoM.Translate((cardW-box)/2, 18)
+		opts.GeoM.Translate((cardW-box)/2, 14)
 		opts.ColorScale.ScaleWithColor(themeGold)
 		dst.DrawImage(src, opts)
 	}
 
-	// Name, centered gold; shrinks to fit long names.
+	// Name, centered; shrinks to fit long names.
 	name := c.Name
-	face := g.theme.Face(faceCardName)
-	if w, _ := measure(name, face); w > cardW-16 {
-		face = g.theme.Face(faceCardText)
+	nameFace := g.theme.Face(faceCardName)
+	if w, _ := measure(name, nameFace); w > cardW-16 {
+		nameFace = g.theme.Face(faceCardText)
 	}
-	nw, nh := measure(name, face)
-	drawText(dst, name, face, (cardW-nw)/2, 128, themeGold)
-
-	// Flavor text, wrapped and centered, muted.
-	flavorFace := g.theme.Face(faceCardText)
-	lines := wrap(c.Text, flavorFace, cardW-20)
-	lh := lineHeight(flavorFace)
-	flavorH := float64(len(lines))*lh + 6
+	nw, _ := measure(name, nameFace)
+	nameY := 114.0
+	drawText(dst, name, nameFace, (cardW-nw)/2, nameY, themeGold)
 
 	// Cost chip: gold circle with the number, top-right.
 	if c.Cost > 0 {
@@ -90,13 +87,18 @@ func (g *Game) paintFace(dst *ebiten.Image, c app.CardView) {
 			cx-r, cy-r, r*2, r*2, rgb(0x15, 0x13, 0x12), text.AlignCenter)
 	}
 
-	// Flavor sits under the name, bottom-anchored so long text reads.
-	fy := cardH - 18 - flavorH
+	// Flavor: at most three lines in the band under the name, centered.
+	flavorFace := g.theme.Face(faceCardText)
+	lines := wrap(c.Text, flavorFace, cardW-16)
+	const flavorTop, maxLines = 148.0, 3
+	lh := lineHeight(flavorFace)
 	for i, ln := range lines {
+		if i >= maxLines {
+			break
+		}
 		w, _ := measure(ln, flavorFace)
-		drawText(dst, ln, flavorFace, (cardW-w)/2, fy+float64(i)*lh, themeMuted)
+		drawText(dst, ln, flavorFace, (cardW-w)/2, flavorTop+float64(i)*lh, themeMuted)
 	}
-	_ = nh
 }
 
 // drawCard blits a cached face at a slot: center (x, y), rotation, scale,

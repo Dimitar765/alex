@@ -32,15 +32,21 @@ func drawText(dst *ebiten.Image, s string, face *text.GoTextFace, x, y float64, 
 	text.Draw(dst, s, face, opts)
 }
 
-// drawTextAligned draws s in the rectangle (x, y, w, h). Horizontal
-// alignment follows alignX; the text is vertically centered in the box.
+// drawTextAligned draws s centered vertically in the box (x, y, w, h),
+// and horizontally per alignX. Alignment is computed from explicit
+// measurements — text/v2's layout options proved unreliable here.
 func drawTextAligned(dst *ebiten.Image, s string, face *text.GoTextFace, x, y, w, h float64, clr color.Color, alignX text.Align) {
-	opts := &text.DrawOptions{}
-	opts.LayoutOptions.PrimaryAlign = alignX
-	opts.LayoutOptions.SecondaryAlign = text.AlignCenter
-	opts.GeoM.Translate(x, y+h/2)
-	opts.ColorScale.ScaleWithColor(clr)
-	text.Draw(dst, s, face, opts)
+	tw, th := measure(s, face)
+	var tx float64
+	switch alignX {
+	case text.AlignCenter:
+		tx = x + (w-tw)/2
+	case text.AlignEnd:
+		tx = x + w - tw
+	default:
+		tx = x
+	}
+	drawText(dst, s, face, tx, y+(h-th)/2, clr)
 }
 
 // drawWrapped draws s word-wrapped to maxW and returns the height used.
