@@ -1,29 +1,15 @@
 # Alexander — a card adventure
 
-A browser game about the life and legacy of Alexander the Great, mixing a
-text adventure with a card game. Written in Go with server-rendered HTML
-and htmx; no JavaScript required to play (htmx only enhances the UX).
+A native 3D game about the life and legacy of Alexander the Great, mixing a
+text adventure with a card game. Written in Rust on Bevy; one binary runs
+on Windows, macOS, and Linux with every asset embedded.
 
 ```
-go run ./cmd/gogame            # serves http://127.0.0.1:8080
-go run ./cmd/gogame -addr :9000 -saves /tmp/saves
+cargo run -p alexander --release            # play
+cargo run -p alexander-core --bin simulate -- --runs 2000 --seed 1   # balance
+cargo test --workspace                      # core suites
+cargo clippy --workspace -- -D warnings     # lint
 ```
-
-## Desktop build (Steam target)
-
-The desktop shell runs the same server on a loopback port inside a
-native webview window (`cmd/alexander`, behind the `desktop` build tag):
-
-```
-go build -tags desktop -trimpath -ldflags "-s -w" ./cmd/alexander
-```
-
-Linux needs `libgtk-3-dev libwebkit2gtk-4.0-dev` (the CI workflow pins
-ubuntu-22.04 for exactly that); Windows uses WebView2; macOS uses
-WebKit. Saves live under the OS config dir (`%APPDATA%/Alexander`,
-`~/Library/Application Support/Alexander`, `$XDG_CONFIG_HOME/Alexander`)
-via `internal/paths`. Gamepad navigation (D-pad/stick + A/B) ships in
-`pad.js` for Steam Deck. CI builds all three OSes on every push.
 
 ## How it plays
 
@@ -38,8 +24,8 @@ Treasury — the way to dig for a gate card you buried, with the discard
 viewer showing what you burned through. Runs start
 with a small Macedonian core deck that grows regionally as the campaign
 reaches new lands. The run ends in one of five endings: triumph, legacy, settle,
-or two flavors of defeat. Keys 1–3 take choices (with JavaScript); the
-**Chronicle** page tracks your campaign history.
+or two flavors of defeat. Keys 1–3 take choices; the **Chronicle** page
+tracks your campaign history.
 
 ### The Persian response
 
@@ -56,25 +42,24 @@ Some cards calm the front instead of fighting: spending them for
 
 ## Architecture
 
-| Package | Role |
+| Crate | Role |
 |---|---|
-| `internal/content` | Data-driven schema (cards, scenes, effects) + full load-time validation |
-| `internal/game` | Rules engine: state, choices, card play, costs, randomness |
-| `internal/sim` | Headless random-greedy simulator: soft-lock proofs and ending distribution |
-| `internal/web` | HTTP server: templates, htmx partials, cookie sessions, JSON saves |
-| root (`assets`) | Embeds `content/` so the binary is self-contained |
+| `crates/core` (`alexander-core`) | Content schema + validation (`content.rs`), rules engine (`game.rs`), view-model/FX-diff/saves (`app/`), balance simulator (`sim.rs`, `bin/simulate`) |
+| `crates/client` (`alexander`) | The Bevy game: 3D hand + table (`hand3d.rs`, `paint.rs`, `tween.rs`), UI screens (`screens/`), FX (`fx.rs`), synth audio (`audio.rs`), input incl. gamepad (`input.rs`) |
 
-Rules live only in `internal/game`; `internal/content` defines what data is
-legal; `internal/web` only renders and persists. Every action runs on a
-clone of the state and commits atomically (memory + save file together), so
-a refused action or a crash can never corrupt a run.
+Rules live only in `crates/core/src/game.rs`; `content.rs` defines what
+data is legal; the client only renders and persists. Every action runs on
+a clone of the state and commits atomically (memory + save file together),
+so a refused action or a crash can never corrupt a run. Content JSON,
+fonts, and card art are `include_str!`/`include_bytes!`-embedded — release
+binaries are self-contained.
 
 ## Authoring content
 
-All content is JSON under `content/`. `content.Load` rejects, with a single
+All content is JSON under `content/`. Loading rejects, with a single
 aggregated error, any dangling card/scene reference, unknown stat key,
 malformed ending, unreachable scene, bad random weight, unobtainable card,
-or fully gated scene — the server refuses to boot on invalid content.
+or fully gated scene — the game refuses to boot on invalid content.
 
 **Cards** (`cards.json`): `id`, `name`, `text`, `cost` (Treasury to play,
 optional), `start` (dealt into the opening deck), `effects[]`. Non-start
@@ -101,55 +86,57 @@ After editing content, simulate campaigns to check for soft-locks and
 ending distribution:
 
 ```
-go run ./cmd/simulate -runs 2000 -seed 1
+cargo run -p alexander-core --bin simulate -- --runs 2000 --seed 1
 ```
 
 The policy is random-greedy (uniform choices, occasional card plays), so
 read defeat-heavy endings with that in mind — it deliberately picks the
 mutiny, humans do not. The same seed always reproduces the same runs, and
-`internal/sim` tests assert zero stuck runs and full ending reachability
-on the shipped campaign.
+the `sim` tests assert zero stuck runs and full ending reachability on the
+shipped campaign. The binary exits 1 if any run soft-locked.
 
 ## Presentation
 
-The card table look is CSS + SVG + vanilla JS, topped with a WebGL hand:
+The card table is a real 3D scene: the hand renders as lit card meshes —
+fronts painted at runtime from the gold emblem PNGs with name, flavor, and
+cost chip, meander-pattern backs — fanned on a table with a deck stack,
+staggered deal-ins, hover lift via raycasting, play arcs toward the scene
+panel, a shuffle riffle, and a scout deck-pulse. The camera parallaxes with
+the pointer, dollies to keep the fan framed on resize, and renders through
+filmic tonemapping with a subtle bloom so the gold reads. A hand-rolled
+tween engine drives it all (cubic ease-out, per-property kill), collapsing
+to single-frame steps under reduced motion.
 
-- **3D hand** (`hand3d.js`, three.js r147 vendored): the hand renders as
-  WebGL card meshes — fronts painted from the SVG emblems with name,
-  flavor, and cost, meander-pattern backs — fanned on a lit table with a
-  deck stack, staggered deal-ins, hover lift via raycasting, play arcs
-  toward the scene, a shuffle riffle, and a scout deck-pulse. The
-  server-rendered DOM hand stays as the data source, keyboard/gamepad
-  focus target, and the automatic fallback when WebGL is unavailable.
-- **Artwork**: every card has a hand-drawn line-art emblem
-  (`internal/web/static/art.svg`, a `<symbol>` sprite in pottery-style
-  gold, referenced via `<use>`); the deck inspector shows thumbnails.
-- **Animation**: cards deal in with a staggered slide, the played card
-  lifts away while its request is held (`htmx:confirm`), siblings settle,
-  the stat row pulses on change, and the ending badge pops; a hover glint
-  sweeps the card art. All of it respects `prefers-reduced-motion`.
-- **FX layer** (`fx.js`, hand-rolled canvas particles, zero deps):
-  shuffle throws ghost cards off the deck with dust, card plays trail
-  gold motes toward the scene, stat deltas float as +N/−N, dice rolls
-  (marked `data-fate` by the engine) micro-shake the scene with dust,
-  and endings get rising gold or falling embers plus a vignette. A
-  sparkle toggle in the header switches it all off.
-- **Sound**: a tiny WebAudio synth in `game.js` (no audio files) —
-  card flick, choice tick, error thud, and per-outcome ending chimes —
-  with a header toggle persisted in `localStorage`.
+An FX layer (hand-rolled particles, zero new deps) dusts the table: shuffle
+throws ghost cards with dust, card plays trail gold motes toward the scene,
+stat deltas float as +N/−N, dice rolls micro-shake the scene with dust, and
+endings get rising gold or falling embers plus a vignette. **M** mutes, **F**
+toggles reduced motion, and **X** switches the FX layer off; all persist in
+`settings.json` beside the saves.
 
-Everything degrades: without JavaScript the game plays natively over
-plain form posts; without WebGL the DOM hand renders instead of the 3D
-one.
+**Sound** is a tiny runtime synth (no audio files) — card flick, choice
+tick, shuffle rustle, scout ping, error thud, and per-outcome ending
+chimes, rendered to WAV in memory from the same parameter table as the
+original clients.
+
+**Input**: keyboard (digits choose, arrows + Enter navigate, Esc backs
+out), mouse (hover lift, click to play), and gamepad (D-pad/stick + A/B,
+any pad acts, 0.5 deadzone).
 
 ## Saves
 
-One JSON file per session in `saves/` (see `-saves` flag), written
-atomically. Sessions idle for 30 days are swept at startup and daily.
+One JSON save plus a run history under the OS config dir
+(`%APPDATA%\Alexander\saves`, `~/Library/Application Support/Alexander/saves`,
+`$XDG_CONFIG_HOME/Alexander/saves`), written atomically. Corrupt saves read
+as empty and land you on the title screen, never an error. Settings live
+beside the saves in `settings.json`.
 
 ## Testing
 
 ```
-go test -race ./...
-go vet ./...
+cargo test --workspace
+cargo clippy --workspace -- -D warnings
 ```
+
+The core suites pin log wording, refusal semantics, threat-edge cases, FX
+ordering, save-layout compatibility, and simulator guarantees.
