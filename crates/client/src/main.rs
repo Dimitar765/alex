@@ -214,10 +214,9 @@ fn setup_world(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    use bevy::core_pipeline::tonemapping::Tonemapping;
-    use bevy::post_process::bloom::Bloom;
-
-    // 3D table camera: perspective 34°, hdr + bloom + filmic tonemapping.
+    // 3D table camera: perspective 34° over the left table region. SDR on
+    // purpose: the HDR pipeline renders black on NVIDIA+Vulkan (Bevy 0.19),
+    // so no bloom / filmic tonemapping until that's fixed upstream.
     let table_w = (DESIGN_W * TABLE_FRAC) as u32;
     let table_h = DESIGN_H as u32;
     commands.spawn((
@@ -236,12 +235,6 @@ fn setup_world(
             fov: 34f32.to_radians(),
             ..default()
         }),
-        bevy::camera::Hdr,
-        Bloom {
-            intensity: 0.12,
-            ..default()
-        },
-        Tonemapping::TonyMcMapface,
         AmbientLight {
             color: Color::srgb(1.0, 0.949, 0.867), // 0xfff2dd
             brightness: 0.75 * 20_000.0,
