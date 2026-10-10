@@ -230,6 +230,12 @@ pub fn sync_hand(
     if view.version == hand3d.version_seen {
         return;
     }
+    // The state transition lands the frame after the action that bumped
+    // the view; deferring here keeps the fresh version unseen so the deal
+    // happens once the table screen is actually active.
+    if screen.get() != &crate::Screen::Table {
+        return;
+    }
     hand3d.version_seen = view.version;
 
     // Outside the table screen the fan is empty.

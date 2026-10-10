@@ -138,7 +138,6 @@ fn main() {
         .insert_resource(hand3d::Hand3D::default())
         .insert_resource(fx::ScreenShake::default())
         .insert_resource(FocusId::default())
-        .insert_resource(screens::UiBuild::default())
         .insert_resource(fx::Anchors::default())
         .insert_resource(fx::HandScreenPos::default())
         .add_systems(
@@ -297,23 +296,19 @@ fn apply_settings_toggles(
     nav: Res<input::Nav>,
     mut settings: ResMut<input::Settings>,
     mut tweens: ResMut<tween::Tweens>,
-    mut build: ResMut<screens::UiBuild>,
 ) {
     if nav.toggle_mute {
         settings.muted = !settings.muted;
         settings.save();
-        build.settings_version += 1;
     }
     if nav.toggle_motion {
         settings.reduced_motion = !settings.reduced_motion;
         tweens.reduced_motion = settings.reduced_motion;
         settings.save();
-        build.settings_version += 1;
     }
     if nav.toggle_fx {
         settings.fx_off = !settings.fx_off;
         settings.save();
-        build.settings_version += 1;
     }
 }
 

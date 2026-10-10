@@ -52,7 +52,7 @@ pub fn build(mut ctx: ScreenCtx<'_, '_, '_>, root: Entity) {
 
     // Scene flavor text (italic serif like the web build), wrapped.
     text(ctx.commands, ctx.theme,
-        Some(panel),
+        Some(root),
         &view.scene.text,
         Face::Italic(theme::FACE_SCENE),
         theme::INK,
@@ -65,7 +65,7 @@ pub fn build(mut ctx: ScreenCtx<'_, '_, '_>, root: Entity) {
     // Stats row at a stable anchor under four wrapped text lines.
     let stats_y = MARGIN_Y + 18.0 + 4.0 * 26.0 + 10.0;
     text(ctx.commands, ctx.theme,
-        Some(panel),
+        Some(root),
         &format!(
             "Legacy {}   Army {}   Treasury {}",
             view.stats.legacy, view.stats.army, view.stats.treasury
@@ -82,7 +82,7 @@ pub fn build(mut ctx: ScreenCtx<'_, '_, '_>, root: Entity) {
     let meter_y = stats_y + 34.0;
     let meter_color = threat_color(view.threat);
     text(ctx.commands, ctx.theme,
-        Some(panel),
+        Some(root),
         "Threat",
         Face::Serif(theme::FACE_SMALL),
         meter_color,
@@ -111,10 +111,10 @@ pub fn build(mut ctx: ScreenCtx<'_, '_, '_>, root: Entity) {
                 BackgroundColor(if filled { meter_color } else { theme::LINE }),
             ))
             .id();
-        ctx.commands.entity(panel).add_children(&[e]);
+        ctx.commands.entity(root).add_children(&[e]);
     }
     text(ctx.commands, ctx.theme,
-        Some(panel),
+        Some(root),
         &format!("{}/{}", view.threat, view.max_threat),
         Face::Serif(theme::FACE_SMALL),
         meter_color,
@@ -139,9 +139,9 @@ pub fn build(mut ctx: ScreenCtx<'_, '_, '_>, root: Entity) {
         .collect();
     let below = meter_y + 34.0;
     if v_ending {
-        build_ending(&mut ctx, right, panel, below);
+        build_ending(&mut ctx, root, below);
     } else {
-        build_choices(&mut ctx, right, panel, below);
+        build_choices(&mut ctx, root, below);
         build_deck_side(&mut ctx, root);
     }
 
@@ -165,11 +165,11 @@ pub fn build(mut ctx: ScreenCtx<'_, '_, '_>, root: Entity) {
 }
 
 /// The ending block: badge, summary, restart, gallery.
-fn build_ending(ctx: &mut ScreenCtx, right: Entity, panel: Entity, y: f32) {
+fn build_ending(ctx: &mut ScreenCtx, root: Entity, y: f32) {
     let view = &ctx.view;
     let color = theme::ending_color(&view.scene.ending);
     text(ctx.commands, ctx.theme,
-        Some(panel),
+        Some(root),
         &view.scene.ending,
         Face::Serif(theme::FACE_HEADER),
         color,
@@ -179,7 +179,7 @@ fn build_ending(ctx: &mut ScreenCtx, right: Entity, panel: Entity, y: f32) {
         false,
     );
     text(ctx.commands, ctx.theme,
-        Some(panel),
+        Some(root),
         &format!(
             "The campaign ends after {} turns · {} cards played · {} campaigns completed",
             view.turns, view.cards_played, view.campaigns
@@ -192,7 +192,7 @@ fn build_ending(ctx: &mut ScreenCtx, right: Entity, panel: Entity, y: f32) {
         true,
     );
     button(ctx.commands, ctx.theme,
-        right,
+        root,
         "Begin a new campaign",
         SCENE_X + 20.0,
         y + 92.0,
@@ -210,7 +210,7 @@ fn build_ending(ctx: &mut ScreenCtx, right: Entity, panel: Entity, y: f32) {
             theme::MUTED
         };
         text(ctx.commands, ctx.theme,
-            Some(right),
+            Some(root),
             &label,
             Face::Serif(theme::FACE_HINT),
             tile_color,
@@ -223,7 +223,7 @@ fn build_ending(ctx: &mut ScreenCtx, right: Entity, panel: Entity, y: f32) {
 }
 
 /// 2–3 choice buttons with requirement hints.
-fn build_choices(ctx: &mut ScreenCtx, right: Entity, panel: Entity, y: f32) {
+fn build_choices(ctx: &mut ScreenCtx, root: Entity, y: f32) {
     let view = ctx.view;
     let mut y = y;
     for c in &view.choices {
@@ -233,7 +233,7 @@ fn build_choices(ctx: &mut ScreenCtx, right: Entity, panel: Entity, y: f32) {
             label.push_str(&format!("  — requires {}", c.requires));
         }
         text(ctx.commands, ctx.theme,
-            Some(panel),
+            Some(root),
             &label,
             Face::Serif(theme::FACE_BODY),
             color,
@@ -259,7 +259,7 @@ fn build_choices(ctx: &mut ScreenCtx, right: Entity, panel: Entity, y: f32) {
                 BackgroundColor(Color::NONE),
             ))
             .id();
-        ctx.commands.entity(panel).add_children(&[line]);
+        ctx.commands.entity(root).add_children(&[line]);
         if !c.available {
             ctx.commands.entity(line).insert(DisabledChoice);
         }
@@ -267,7 +267,7 @@ fn build_choices(ctx: &mut ScreenCtx, right: Entity, panel: Entity, y: f32) {
     }
     if !view.choices.is_empty() {
         text(ctx.commands, ctx.theme,
-            Some(panel),
+            Some(root),
             &format!("press 1–{}", view.choices.len()),
             Face::Serif(theme::FACE_HINT),
             theme::MUTED,
@@ -277,7 +277,6 @@ fn build_choices(ctx: &mut ScreenCtx, right: Entity, panel: Entity, y: f32) {
             false,
         );
     }
-    let _ = right;
 }
 
 /// The deck-side column over the 3D table: deck counts, Scout and

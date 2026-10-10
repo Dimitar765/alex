@@ -134,11 +134,14 @@ pub fn keys(
         .unwrap_or(0);
     let mut idx = idx.min(menu.len() - 1);
     if nav.vertical_step() != 0 {
-        idx = (idx + nav.vertical_step() as usize + menu.len()) % menu.len();
+        idx = (idx as i32 + nav.vertical_step()).rem_euclid(menu.len() as i32) as usize;
     }
     if nav.confirm {
         let (_, action) = menu[idx].clone();
         writer.write(action);
     }
-    focus.0 = Some(idx.to_string());
+    let next = idx.to_string();
+    if focus.0.as_deref() != Some(next.as_str()) {
+        focus.0 = Some(next);
+    }
 }

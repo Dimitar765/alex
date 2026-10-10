@@ -17,30 +17,6 @@ pub mod title;
 #[derive(Component)]
 pub struct ScreenRoot;
 
-/// Rebuild bookkeeping.
-#[derive(Resource)]
-pub struct UiBuild {
-    pub state: Option<Screen>,
-    pub model_version: u64,
-    pub settings_version: u64,
-    built_state: Option<Screen>,
-    built_version: u64,
-    built_settings: u64,
-}
-
-impl Default for UiBuild {
-    fn default() -> Self {
-        UiBuild {
-            state: None,
-            model_version: 0,
-            settings_version: 0,
-            built_state: None,
-            built_version: u64::MAX,
-            built_settings: 0,
-        }
-    }
-}
-
 /// A clickable button bound to a game action.
 #[derive(Component, Clone)]
 pub struct ActionButton(pub GameAction);
@@ -61,7 +37,8 @@ pub fn spawn_screen_root(mut commands: Commands) {
     ));
 }
 
-/// Rebuilds the active screen when anything it draws changed.
+/// Rebuilds the active screen when anything it draws changed: the screen
+/// state, the projected view, the settings, or keyboard focus.
 #[allow(clippy::too_many_arguments)]
 pub fn update_ui(
     mut commands: Commands,
@@ -69,7 +46,6 @@ pub fn update_ui(
     state: Res<State<Screen>>,
     view: Res<ViewCache>,
     settings: Res<crate::input::Settings>,
-    mut build: ResMut<UiBuild>,
     theme: Res<Theme>,
     painted: Res<crate::paint::PaintedCards>,
     _images: Res<Assets<Image>>,
@@ -78,10 +54,7 @@ pub fn update_ui(
     model: Res<crate::GameModel>,
     children: Query<&Children>,
 ) {
-    let changed = build.built_state != build.state
-        || build.built_version != build.model_version
-        || build.built_settings != build.settings_version;
-    if !changed {
+    if !(state.is_changed() || view.is_changed() || settings.is_changed() || focus.is_changed()) {
         return;
     }
     let Ok(root) = root.single() else {
@@ -93,9 +66,6 @@ pub fn update_ui(
             commands.entity(kid).despawn();
         }
     }
-    build.built_state = build.state;
-    build.built_version = build.model_version;
-    build.built_settings = build.settings_version;
 
     let ctx = ScreenCtx {
         commands: &mut commands,
